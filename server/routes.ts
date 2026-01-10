@@ -1,16 +1,114 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { api } from "@shared/routes";
+import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { z } from "zod";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  // Auth setup
+  await setupAuth(app);
+  registerAuthRoutes(app);
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  // Helper for admin check
+  const requireAdmin = async (req: any, res: any, next: any) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const user = await storage.getUser(req.user.claims.sub);
+    if (!user?.isAdmin) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    next();
+  };
+
+  // Servers
+  app.get(api.servers.list.path, async (req, res) => {
+    const servers = await storage.getServers();
+    res.json(servers);
+  });
+
+  // Battlepass
+  app.get(api.battlepass.getConfig.path, async (req, res) => {
+    const config = await storage.getBattlepassConfig();
+    res.json(config);
+  });
+
+  app.patch(api.battlepass.updateConfig.path, requireAdmin, async (req, res) => {
+    try {
+      const config = api.battlepass.updateConfig.input.parse(req.body);
+      const updated = await storage.updateBattlepassConfig(config);
+      res.json(updated);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.get(api.battlepass.listLevels.path, async (req, res) => {
+    const levels = await storage.getBattlepassLevels();
+    res.json(levels);
+  });
+
+  app.post(api.battlepass.createLevel.path, requireAdmin, async (req, res) => {
+    try {
+      const level = api.battlepass.createLevel.input.parse(req.body);
+      const created = await storage.createBattlepassLevel(level);
+      res.status(201).json(created);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.put(api.battlepass.updateLevel.path, requireAdmin, async (req, res) => {
+    try {
+      const level = api.battlepass.updateLevel.input.parse(req.body);
+      const updated = await storage.updateBattlepassLevel(Number(req.params.id), level);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  // Seed Data
+  await seedDatabase();
 
   return httpServer;
+}
+
+async function seedDatabase() {
+  const servers = await storage.getServers();
+  if (servers.length === 0) {
+    await storage.createServer({
+      name: "Livonia 101x | ASYLUM™",
+      map: "Livonia",
+      description: "High loot, full cars, PvPvE experience in Livonia.",
+      multiplier: "101x",
+      features: ["PvPvE", "Full cars", "Economy"],
+      connectionInfo: "127.0.0.1:2302"
+    });
+    await storage.createServer({
+      name: "Chernarus 102x | ASYLUM™",
+      map: "Chernarus",
+      description: "Extreme survival with boosted economy.",
+      multiplier: "102x",
+      features: ["PvPvE", "Full cars", "Economy"],
+      connectionInfo: "127.0.0.1:2302"
+    });
+  }
+
+  const levels = await storage.getBattlepassLevels();
+  if (levels.length === 0) {
+    for (let i = 1; i <= 50; i++) {
+      await storage.createBattlepassLevel({
+        level: i,
+        freeReward: `Level ${i} Scrap`,
+        premiumReward: `Level ${i} Tactical Gear`,
+        imageUrl: null
+      });
+    }
+  }
 }
