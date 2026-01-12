@@ -2,10 +2,15 @@ import { Navigation } from "@/components/Navigation";
 import { useBattlepassConfig, useBattlepassLevels } from "@/hooks/use-battlepass";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function Battlepass() {
   const { data: config } = useBattlepassConfig();
@@ -13,6 +18,59 @@ export default function Battlepass() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 5;
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  // Secret code state
+  const [inputBuffer, setInputBuffer] = useState("");
+  const [showSecretDialog, setShowSecretDialog] = useState(false);
+  const [secretCode, setSecretCode] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showSecretDialog) return;
+      
+      const char = e.key.toLowerCase();
+      if (/^[a-z0-9]$/.test(char)) {
+        setInputBuffer(prev => {
+          const newBuffer = (prev + char).slice(-20);
+          return newBuffer;
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showSecretDialog]);
+
+  // Check buffer for common triggers or just a long string
+  useEffect(() => {
+    if (inputBuffer.includes("admin") || inputBuffer.includes("asylum")) {
+      setShowSecretDialog(true);
+      setInputBuffer("");
+    }
+  }, [inputBuffer]);
+
+  const handleSecretSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsVerifying(true);
+    try {
+      const res = await apiRequest("POST", "/api/admin/verify-code", { code: secretCode });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Access Granted", description: "Redirecting to Admin Console..." });
+        setLocation("/admin");
+      } else {
+        toast({ title: "Access Denied", description: "Invalid secret code.", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Verification failed.", variant: "destructive" });
+    } finally {
+      setIsVerifying(false);
+      setSecretCode("");
+    }
+  };
 
   const themeColor = config?.themeColor === "tech-blue" ? "cyan" : "red";
 
@@ -63,6 +121,36 @@ export default function Battlepass() {
           </motion.div>
         </div>
       </div>
+
+      {/* Secret Access Dialog */}
+      <Dialog open={showSecretDialog} onOpenChange={setShowSecretDialog}>
+        <DialogContent className="bg-zinc-900 border-red-900/50 text-white font-mono">
+          <DialogHeader>
+            <DialogTitle className="font-tactical flex items-center gap-2">
+              <Terminal className="w-5 h-5 text-red-500" />
+              SYSTEM OVERRIDE
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSecretSubmit} className="space-y-4 pt-4">
+            <p className="text-xs text-gray-500">ENTER COMMAND CLEARANCE CODE:</p>
+            <Input 
+              type="password"
+              autoFocus
+              value={secretCode}
+              onChange={(e) => setSecretCode(e.target.value)}
+              className="bg-black border-red-900/50 text-red-500 focus:border-red-500 font-mono tracking-widest"
+              placeholder="********"
+            />
+            <Button 
+              type="submit" 
+              className="w-full bg-red-900/50 hover:bg-red-800 text-red-500 border border-red-500/50"
+              disabled={isVerifying}
+            >
+              {isVerifying ? "VERIFYING..." : "EXECUTE"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Season Title */}
       <div className="text-center py-6 sm:py-8 border-b border-amber-900/30">

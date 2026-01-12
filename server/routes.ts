@@ -4,6 +4,9 @@ import { storage } from "./storage";
 import { api, supportRequestSchema } from "@shared/routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { z } from "zod";
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -18,7 +21,9 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const user = await storage.getUser(req.user.claims.sub);
+    const userProfile = req.user as any;
+    const userId = userProfile.claims?.sub || userProfile.id;
+    const user = await storage.getUser(userId);
     if (!user?.isAdmin) {
       return res.status(403).json({ message: "Forbidden" });
     }
@@ -96,6 +101,28 @@ export async function registerRoutes(
     } catch (e) {
       res.status(400).json({ message: "Invalid input" });
     }
+  });
+
+  // Secret Admin Access
+  app.post("/api/admin/verify-code", async (req, res) => {
+    const { code } = req.body;
+    const adminCode = process.env.ADMIN_SECRET_CODE;
+    
+    if (code && adminCode && code === adminCode) {
+      // If user is logged in, we can promote them to admin for this session
+      if (req.isAuthenticated()) {
+        const userProfile = req.user as any;
+        const userId = userProfile.claims?.sub || userProfile.id;
+        const user = await storage.getUser(userId);
+        if (user && !user.isAdmin) {
+          // This is a temporary elevation or we could make it permanent
+          // For owner convenience, let's make it permanent if they have the code
+          await db.update(users).set({ isAdmin: true }).where(eq(users.id, userId));
+        }
+      }
+      return res.json({ success: true });
+    }
+    res.status(401).json({ success: false, message: "Invalid code" });
   });
 
   // Support - List all requests (admin only)
