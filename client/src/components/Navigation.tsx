@@ -54,7 +54,7 @@ export function Navigation() {
                 <img src={logoImg} alt="Asylum Logo" className="object-cover w-full h-full" />
               </div>
               <span className="font-tactical text-lg sm:text-2xl tracking-widest text-white group-hover:text-red-500 transition-colors duration-300">
-                <span className="hidden xs:inline">ASYLUM</span><span className="text-red-600">DAYZ</span>
+                <span className="hidden xs:inline">ASYLUM </span><span className="text-red-600">DAYZ</span>
               </span>
             </div>
           </Link>
