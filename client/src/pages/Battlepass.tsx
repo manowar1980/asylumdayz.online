@@ -59,6 +59,7 @@ export default function Battlepass() {
       const res = await apiRequest("POST", "/api/admin/verify-code", { code: secretCode });
       const data = await res.json();
       if (data.success) {
+        localStorage.setItem("admin_override", "true");
         toast({ title: "Access Granted", description: "Redirecting to Admin Console..." });
         setLocation("/admin");
       } else {

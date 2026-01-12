@@ -23,9 +23,14 @@ export default function Admin() {
   const { data: config, isLoading: configLoading } = useBattlepassConfig();
   const { data: levels, isLoading: levelsLoading } = useBattlepassLevels();
   
+  // Use a local state for override access to bypass isAdmin check
+  const [hasOverride, setHasOverride] = useState(() => {
+    return localStorage.getItem("admin_override") === "true";
+  });
+
   if (authLoading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading Auth...</div>;
   
-  if (!user || !user.isAdmin) {
+  if (!hasOverride && (!user || !user.isAdmin)) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-red-500 gap-4 px-4">
         <h1 className="text-3xl sm:text-4xl font-tactical text-center">ACCESS DENIED</h1>
