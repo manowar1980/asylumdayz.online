@@ -9,6 +9,7 @@ import { users } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import OpenAI from "openai";
+import multer from "multer";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -224,10 +225,24 @@ export async function registerRoutes(
     }
   });
 
-  // Asylum AI Chat
-  app.post("/api/chat", async (req, res) => {
+  // Asylum AI Chat with image support
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }
+  });
+
+  app.post("/api/chat", upload.single("image"), async (req, res) => {
     try {
-      const { message, history } = req.body;
+      const message = req.body.message;
+      let history = req.body.history;
+      
+      if (typeof history === "string") {
+        try {
+          history = JSON.parse(history);
+        } catch {
+          history = [];
+        }
+      }
       
       if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ response: "Please provide a message." });
@@ -284,7 +299,9 @@ CUSTOM BASES (monthly):
 FACTIONS:
 - Creation: 10k
 - Rename existing: 3k
-- Cancellation: 1k`;
+- Cancellation: 1k
+
+If the user sends an image, analyze it and respond helpfully. For DayZ-related images (maps, bases, gear, gameplay), provide tactical advice.`;
 
       const sanitizedHistory: { role: "user" | "assistant"; content: string }[] = [];
       if (Array.isArray(history)) {
@@ -296,14 +313,33 @@ FACTIONS:
         }
       }
 
+      let userContent: any;
+      
+      if (req.file) {
+        const base64Image = req.file.buffer.toString("base64");
+        const mimeType = req.file.mimetype || "image/jpeg";
+        userContent = [
+          { type: "text", text: message.slice(0, 2000) },
+          { 
+            type: "image_url", 
+            image_url: { 
+              url: `data:${mimeType};base64,${base64Image}`,
+              detail: "low"
+            } 
+          }
+        ];
+      } else {
+        userContent = message.slice(0, 2000);
+      }
+
       const messages: any[] = [
         { role: "system", content: systemPrompt },
         ...sanitizedHistory,
-        { role: "user", content: message.slice(0, 2000) }
+        { role: "user", content: userContent }
       ];
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: req.file ? "gpt-4o" : "gpt-4o-mini",
         messages,
         max_tokens: 500,
         temperature: 0.7,
