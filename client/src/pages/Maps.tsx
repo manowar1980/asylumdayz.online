@@ -89,7 +89,7 @@ export default function Maps() {
           </div>
         </div>
 
-        <TacticalCard title={`${activeMap.name} SURVIVAL GRID`} color="red" className="p-0 overflow-hidden border-white/10">
+        <TacticalCard title={`${activeMap.name} SURVIVAL GRID`} className="p-0 overflow-hidden border-white/10">
           <div className="h-[600px] sm:h-[800px] w-full bg-zinc-950">
             <MapContainer
               center={[500, 500]}
