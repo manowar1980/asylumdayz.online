@@ -1,5 +1,4 @@
-import { Switch, Route, Router } from "wouter";
-import { useHashLocation } from "wouter/use-hash-location";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,11 +13,12 @@ import Support from "@/pages/Support";
 import Admin from "@/pages/Admin";
 import Maps from "@/pages/Maps";
 import Factions from "@/pages/Factions";
-import NotFound from "@/pages/not-found";
 
 function AppRouter() {
+  const [location] = useLocation();
+  
   return (
-    <Switch>
+    <Switch location={location}>
       <Route path="/" component={Home} />
       <Route path="/info" component={Info} />
       <Route path="/maps" component={Maps} />
@@ -27,7 +27,7 @@ function AppRouter() {
       <Route path="/donate" component={Donate} />
       <Route path="/support" component={Support} />
       <Route path="/admin" component={Admin} />
-      <Route component={NotFound} />
+      <Route component={Home} />
     </Switch>
   );
 }
@@ -36,11 +36,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router hook={useHashLocation}>
-          <Toaster />
-          <AppRouter />
-          <AsylumAIChat />
-        </Router>
+        <Toaster />
+        <AppRouter />
+        <AsylumAIChat />
       </TooltipProvider>
     </QueryClientProvider>
   );

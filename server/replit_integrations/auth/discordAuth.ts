@@ -103,14 +103,14 @@ export async function setupDiscordAuth(app: Express) {
 
   app.get("/api/callback", (req, res, next) => {
     const strategyName = `discord-${req.hostname}`;
-    passport.authenticate(strategyName, { failureRedirect: "/#/" })(req, res, () => {
-      res.redirect("/#/");
+    passport.authenticate(strategyName, { failureRedirect: "/" })(req, res, () => {
+      res.redirect("/");
     });
   });
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
-      res.redirect("/#/");
+      res.redirect("/");
     });
   });
 }
