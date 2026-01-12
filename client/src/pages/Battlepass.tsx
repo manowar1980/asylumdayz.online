@@ -2,16 +2,14 @@ import { Navigation } from "@/components/Navigation";
 import { useBattlepassConfig, useBattlepassLevels } from "@/hooks/use-battlepass";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal, ShoppingCart, Loader2 } from "lucide-react";
+import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useLocation, useSearch } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useQuery } from "@tanstack/react-query";
 
 export default function Battlepass() {
   const { data: config } = useBattlepassConfig();
@@ -19,69 +17,12 @@ export default function Battlepass() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 5;
-  const [, setLocation] = useLocation();
-  const searchString = useSearch();
   const { toast } = useToast();
 
-  // Secret code state
   const [inputBuffer, setInputBuffer] = useState("");
   const [showSecretDialog, setShowSecretDialog] = useState(false);
   const [secretCode, setSecretCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
-
-  // Purchase state
-  const [showPurchaseDialog, setShowPurchaseDialog] = useState(false);
-  const [isPurchasing, setIsPurchasing] = useState(false);
-
-  const { data: battlepassProduct } = useQuery<{
-    id: string;
-    name: string;
-    description: string;
-    price_id: string;
-    unit_amount: number;
-    currency: string;
-  }>({
-    queryKey: ['/api/battlepass/product'],
-  });
-
-  // Handle payment success/cancel from URL
-  useEffect(() => {
-    const params = new URLSearchParams(searchString);
-    if (params.get('success') === 'true') {
-      toast({ 
-        title: "Purchase Successful!", 
-        description: "Welcome to the Premium Battlepass. Enjoy your rewards!" 
-      });
-      window.history.replaceState({}, '', '/battlepass');
-    } else if (params.get('canceled') === 'true') {
-      toast({ 
-        title: "Purchase Canceled", 
-        description: "Your payment was not processed.",
-        variant: "destructive"
-      });
-      window.history.replaceState({}, '', '/battlepass');
-    }
-  }, [searchString, toast]);
-
-  const handlePurchase = async () => {
-    setIsPurchasing(true);
-    try {
-      const res = await apiRequest("POST", "/api/checkout/battlepass", {});
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error("No checkout URL received");
-      }
-    } catch (err) {
-      toast({ 
-        title: "Error", 
-        description: "Failed to start checkout. Please try again.", 
-        variant: "destructive" 
-      });
-      setIsPurchasing(false);
-    }
-  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -100,7 +41,6 @@ export default function Battlepass() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showSecretDialog]);
 
-  // Check buffer for common triggers or just a long string
   useEffect(() => {
     if (inputBuffer.includes("admin") || inputBuffer.includes("asylum")) {
       setShowSecretDialog(true);
@@ -147,7 +87,6 @@ export default function Battlepass() {
     <div className="min-h-screen bg-gradient-to-b from-zinc-900 via-black to-zinc-900 font-sans">
       <Navigation />
 
-      {/* Fallout-style Header Banner */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-amber-900/20 via-yellow-600/10 to-amber-900/20" />
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1IiBoZWlnaHQ9IjUiPgo8cmVjdCB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAuMiIvPgo8cGF0aCBkPSJNMCA1TDUgMFpNNiA0TDQgNlpNLTEgMUwxIC0xWiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utb3BhY2l0eT0iMC4xIi8+Cjwvc3ZnPg==')] opacity-50" />
@@ -171,25 +110,14 @@ export default function Battlepass() {
               <span className="font-tactical text-xl sm:text-3xl text-white tracking-wider">BLOOD & RUST</span>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-amber-400 font-mono text-sm">
-                <Clock className="w-4 h-4" />
-                <span>{config?.daysLeft || 25} DAYS LEFT</span>
-              </div>
-              <Button
-                onClick={() => setShowPurchaseDialog(true)}
-                className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-tactical text-sm px-4 py-2 gap-2 shadow-lg shadow-amber-900/50"
-                data-testid="button-buy-battlepass"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                BUY PASS
-              </Button>
+            <div className="flex items-center gap-2 text-amber-400 font-mono text-sm">
+              <Clock className="w-4 h-4" />
+              <span>{config?.daysLeft || 25} DAYS LEFT</span>
             </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Secret Access Dialog */}
       <Dialog open={showSecretDialog} onOpenChange={setShowSecretDialog}>
         <DialogContent className="bg-zinc-900 border-red-900/50 text-white font-mono">
           <DialogHeader>
@@ -219,76 +147,6 @@ export default function Battlepass() {
         </DialogContent>
       </Dialog>
 
-      {/* Purchase Battlepass Dialog */}
-      <Dialog open={showPurchaseDialog} onOpenChange={setShowPurchaseDialog}>
-        <DialogContent className="bg-gradient-to-b from-zinc-900 to-black border-amber-900/50 text-white">
-          <DialogHeader>
-            <DialogTitle className="font-tactical text-2xl text-amber-400 flex items-center gap-2">
-              <Crown className="w-6 h-6" />
-              PREMIUM BATTLEPASS
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Unlock all premium rewards for the current season
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 pt-4">
-            <div className="bg-black/50 border border-amber-900/30 p-4 rounded">
-              <h4 className="font-tactical text-amber-300 mb-2">INCLUDED:</h4>
-              <ul className="space-y-2 text-sm text-gray-300">
-                <li className="flex items-center gap-2">
-                  <Gift className="w-4 h-4 text-amber-500" />
-                  50 Premium Reward Tiers
-                </li>
-                <li className="flex items-center gap-2">
-                  <Gift className="w-4 h-4 text-amber-500" />
-                  Exclusive Tactical Gear
-                </li>
-                <li className="flex items-center gap-2">
-                  <Gift className="w-4 h-4 text-amber-500" />
-                  Unique Weapon Skins
-                </li>
-                <li className="flex items-center gap-2">
-                  <Gift className="w-4 h-4 text-amber-500" />
-                  Premium Season Badge
-                </li>
-              </ul>
-            </div>
-
-            <div className="text-center">
-              <div className="font-tactical text-4xl text-amber-400">
-                ${battlepassProduct?.unit_amount ? (battlepassProduct.unit_amount / 100).toFixed(2) : '9.99'}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">ONE-TIME PURCHASE</p>
-            </div>
-
-            <Button
-              onClick={handlePurchase}
-              disabled={isPurchasing}
-              className="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-tactical text-lg py-6 gap-2"
-              data-testid="button-confirm-purchase"
-            >
-              {isPurchasing ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  PROCESSING...
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="w-5 h-5" />
-                  PURCHASE NOW
-                </>
-              )}
-            </Button>
-            
-            <p className="text-xs text-center text-gray-500">
-              Secure checkout powered by Stripe
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Season Title */}
       <div className="text-center py-6 sm:py-8 border-b border-amber-900/30">
         <h1 className={cn(
           "text-4xl sm:text-6xl md:text-7xl font-tactical tracking-wider",
@@ -299,10 +157,8 @@ export default function Battlepass() {
         <p className="text-gray-500 font-mono text-sm mt-2">SEASON 01 • SCOREBOARD</p>
       </div>
 
-      {/* Scoreboard Grid - Fallout 76 Style */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
         
-        {/* Navigation Arrows */}
         <div className="flex items-center justify-between mb-6">
           <Button
             variant="ghost"
@@ -331,7 +187,6 @@ export default function Battlepass() {
           </Button>
         </div>
 
-        {/* Reward Cards Grid */}
         <div ref={scrollRef} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
           {isLoading && Array(5).fill(0).map((_, i) => (
             <Skeleton key={i} className="aspect-[3/4] bg-zinc-800/50" />
@@ -354,7 +209,6 @@ export default function Battlepass() {
           ))}
         </div>
 
-        {/* Bottom Navigation Bar - Fallout Style */}
         <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-2 sm:gap-4 text-xs font-mono border-t border-amber-900/30 pt-6">
           {["CLAIM", "RANK UP", "TUTORIAL", "S.C.O.R.E", "CHALLENGES"].map((item) => (
             <div
@@ -389,7 +243,6 @@ function ScoreboardCard({
       "relative aspect-[3/4] bg-gradient-to-b from-zinc-800 to-zinc-900 border-2 overflow-hidden group transition-all duration-300 hover:scale-105",
       `border-${accentColor}-900/50 hover:border-${accentColor}-500`
     )}>
-      {/* Card Header - Level Number */}
       <div className={cn(
         "absolute top-0 left-0 right-0 py-1 sm:py-2 text-center font-tactical text-lg sm:text-xl border-b",
         `bg-${accentColor}-900/30 border-${accentColor}-700/50 text-${accentColor}-400`
@@ -397,9 +250,7 @@ function ScoreboardCard({
         {level}
       </div>
 
-      {/* Main Reward Image Area */}
       <div className="absolute inset-0 top-8 sm:top-10 flex flex-col">
-        {/* Premium Reward (Top Half) */}
         <div className={cn(
           "flex-1 flex flex-col items-center justify-center p-2 border-b relative",
           `border-${accentColor}-900/30 bg-gradient-to-b from-${accentColor}-950/20 to-transparent`
@@ -418,7 +269,6 @@ function ScoreboardCard({
           )}
         </div>
 
-        {/* Free Reward (Bottom Half) */}
         <div className="flex-1 flex flex-col items-center justify-center p-2 bg-black/20 relative">
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-black/50 rounded border border-white/10 flex items-center justify-center mb-1 sm:mb-2">
             <Gift className="w-4 h-4 sm:w-6 sm:h-6 text-gray-500" />
@@ -432,7 +282,6 @@ function ScoreboardCard({
         </div>
       </div>
 
-      {/* Glow Effect on Hover */}
       <div className={cn(
         "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none",
         `shadow-[inset_0_0_30px_rgba(var(--${accentColor}-glow),0.3)]`

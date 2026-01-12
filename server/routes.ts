@@ -3,11 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api, supportRequestSchema } from "@shared/routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { z } from "zod";
 import { db } from "./db";
 import { users } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
-import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import multer from "multer";
 import path from "path";
@@ -192,71 +190,6 @@ export async function registerRoutes(
       res.json(updated);
     } catch (e) {
       res.status(400).json({ message: "Invalid input" });
-    }
-  });
-
-  // Stripe Routes
-  app.get("/api/stripe/publishable-key", async (req, res) => {
-    try {
-      const key = await getStripePublishableKey();
-      res.json({ publishableKey: key });
-    } catch (error) {
-      console.error("Error getting Stripe publishable key:", error);
-      res.status(500).json({ message: "Stripe not configured" });
-    }
-  });
-
-  app.get("/api/battlepass/product", async (req, res) => {
-    try {
-      const result = await db.execute(
-        sql`SELECT p.id, p.name, p.description, pr.id as price_id, pr.unit_amount, pr.currency 
-            FROM stripe.products p 
-            LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true 
-            WHERE p.active = true AND p.metadata->>'type' = 'battlepass' 
-            LIMIT 1`
-      );
-      if (result.rows.length === 0) {
-        return res.status(404).json({ message: "Battlepass product not found" });
-      }
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error("Error fetching battlepass product:", error);
-      res.status(500).json({ message: "Failed to fetch battlepass product" });
-    }
-  });
-
-  app.post("/api/checkout/battlepass", async (req, res) => {
-    try {
-      const stripe = await getUncachableStripeClient();
-      
-      const result = await db.execute(
-        sql`SELECT pr.id as price_id FROM stripe.products p 
-            JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true 
-            WHERE p.active = true AND p.metadata->>'type' = 'battlepass' 
-            LIMIT 1`
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ message: "Battlepass product not found" });
-      }
-
-      const priceId = result.rows[0].price_id as string;
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-      const host = req.get('host') || process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-      const baseUrl = `${protocol}://${host}`;
-
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: [{ price: priceId, quantity: 1 }],
-        mode: 'payment',
-        success_url: `${baseUrl}/battlepass?success=true`,
-        cancel_url: `${baseUrl}/battlepass?canceled=true`,
-      });
-
-      res.json({ url: session.url });
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-      res.status(500).json({ message: "Failed to create checkout session" });
     }
   });
 
