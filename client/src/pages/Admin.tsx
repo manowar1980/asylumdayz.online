@@ -110,7 +110,7 @@ function SupportRequestsList() {
 
   if (isLoading) return <Loader2 className="animate-spin text-white" />;
 
-  if (!requests || requests.length === 0) {
+  if (!requests || (Array.isArray(requests) && requests.length === 0)) {
     return (
       <div className="text-center py-8 text-gray-500 font-mono">
         <Mail className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -119,9 +119,11 @@ function SupportRequestsList() {
     );
   }
 
+  const requestsArray = Array.isArray(requests) ? requests : [];
+
   return (
     <div className="space-y-3">
-      {(requests as any[]).map((req) => (
+      {requestsArray.map((req) => (
         <TacticalCard key={req.id} className="!p-3 sm:!p-4">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div className="flex-1 min-w-0">

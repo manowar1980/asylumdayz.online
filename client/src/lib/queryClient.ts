@@ -13,12 +13,19 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   const adminCode = localStorage.getItem("admin_override") === "true" ? "1327" : null;
+  const headers: Record<string, string> = {};
+  
+  if (data) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  if (adminCode) {
+    headers["x-admin-code"] = adminCode;
+  }
+
   const res = await fetch(url, {
     method,
-    headers: {
-      ...(data ? { "Content-Type": "application/json" } : {}),
-      ...(adminCode ? { "x-admin-code": adminCode } : {}),
-    },
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -33,7 +40,17 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const adminCode = localStorage.getItem("admin_override") === "true" ? "1327" : null;
+    const headers: Record<string, string> = {
+      "credentials": "include",
+    };
+    
+    if (adminCode) {
+      headers["x-admin-code"] = adminCode;
+    }
+
     const res = await fetch(queryKey.join("/") as string, {
+      headers,
       credentials: "include",
     });
 
