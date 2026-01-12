@@ -8,6 +8,7 @@ import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import OpenAI from "openai";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -220,6 +221,61 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error creating checkout session:", error);
       res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  // Asylum AI Chat
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { message, history } = req.body;
+      
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ response: "Please provide a message." });
+      }
+
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ response: "AI service not configured." });
+      }
+
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const systemPrompt = `You are Asylum AI, a tactical assistant for the Asylum DayZ gaming community. You help players with:
+- DayZ gameplay tips, survival strategies, and base building advice
+- Information about Asylum DayZ servers (Livonia 101x and Chernarus 102x)
+- Community rules and guidelines
+- Technical support for server connection issues
+- General gaming questions
+
+Keep responses concise, tactical, and in-character as a military/survival AI assistant. Use tactical terminology when appropriate. Be helpful and friendly while maintaining the dark, survivalist theme of DayZ.`;
+
+      const sanitizedHistory: { role: "user" | "assistant"; content: string }[] = [];
+      if (Array.isArray(history)) {
+        for (const item of history.slice(-10)) {
+          if (item && typeof item === "object" && typeof item.content === "string") {
+            const role = item.role === "user" ? "user" : "assistant";
+            sanitizedHistory.push({ role, content: item.content.slice(0, 2000) });
+          }
+        }
+      }
+
+      const messages: any[] = [
+        { role: "system", content: systemPrompt },
+        ...sanitizedHistory,
+        { role: "user", content: message.slice(0, 2000) }
+      ];
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      const response = completion.choices[0]?.message?.content || "No response generated.";
+      res.json({ response });
+    } catch (error: any) {
+      console.error("Chat error:", error);
+      res.status(500).json({ response: "Sorry, I encountered an error. Please try again." });
     }
   });
 

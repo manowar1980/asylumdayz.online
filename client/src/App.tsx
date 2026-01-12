@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AsylumAIChat } from "@/components/AsylumAIChat";
 
 import Home from "@/pages/Home";
 import Info from "@/pages/Info";
@@ -32,6 +33,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <AsylumAIChat />
       </TooltipProvider>
     </QueryClientProvider>
   );
