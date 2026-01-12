@@ -52,10 +52,12 @@ Preferred communication style: Simple, everyday language.
 - `support_requests` - Customer support tickets
 
 ### Authentication
-- **Provider:** Replit Auth (OpenID Connect)
-- **Implementation:** Passport.js with custom OIDC strategy
+- **Provider:** Discord OAuth2
+- **Implementation:** Passport.js with passport-discord strategy
 - **Session Storage:** PostgreSQL-backed sessions with 7-day TTL
 - **Admin Authorization:** Role-based access via `isAdmin` boolean on user records
+- **User Data:** Discord ID, username, avatar, and email stored in users table
+- **Required Secrets:** DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, SESSION_SECRET
 
 ### Build System
 - **Development:** Vite dev server with Express backend proxy
