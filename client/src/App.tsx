@@ -8,6 +8,7 @@ import Home from "@/pages/Home";
 import Info from "@/pages/Info";
 import Battlepass from "@/pages/Battlepass";
 import Donate from "@/pages/Donate";
+import Support from "@/pages/Support";
 import Admin from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/info" component={Info} />
       <Route path="/battlepass" component={Battlepass} />
       <Route path="/donate" component={Donate} />
+      <Route path="/support" component={Support} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

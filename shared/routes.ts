@@ -14,6 +14,15 @@ export const errorSchemas = {
   }),
 };
 
+export const supportRequestSchema = z.object({
+  name: z.string().optional(),
+  email: z.string().optional(),
+  discordUsername: z.string().optional(),
+  category: z.string(),
+  subject: z.string(),
+  message: z.string(),
+});
+
 export const api = {
   servers: {
     list: {
@@ -68,6 +77,17 @@ export const api = {
       },
     },
   },
+  support: {
+    submit: {
+      method: 'POST' as const,
+      path: '/api/support',
+      input: supportRequestSchema,
+      responses: {
+        200: z.object({ success: z.boolean(), message: z.string() }),
+        400: errorSchemas.validation,
+      },
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {
@@ -81,3 +101,5 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
   }
   return url;
 }
+
+export type SupportRequest = z.infer<typeof supportRequestSchema>;

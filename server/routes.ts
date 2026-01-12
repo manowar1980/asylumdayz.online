@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { api } from "@shared/routes";
+import { api, supportRequestSchema } from "@shared/routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { z } from "zod";
 
@@ -68,6 +68,31 @@ export async function registerRoutes(
       const updated = await storage.updateBattlepassLevel(Number(req.params.id), level);
       if (!updated) return res.status(404).json({ message: "Not found" });
       res.json(updated);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  // Support Form - Logs to console (in production, this would send an email)
+  app.post(api.support.submit.path, async (req, res) => {
+    try {
+      const data = supportRequestSchema.parse(req.body);
+      
+      // Log the support request (in a real app, send email to damian.discord10@gmail.com)
+      console.log("=== SUPPORT REQUEST ===");
+      console.log(`To: damian.discord10@gmail.com`);
+      console.log(`From: ${data.email || "Not provided"}`);
+      console.log(`Name: ${data.name || "Not provided"}`);
+      console.log(`Discord: ${data.discordUsername || "Not provided"}`);
+      console.log(`Category: ${data.category}`);
+      console.log(`Subject: ${data.subject}`);
+      console.log(`Message: ${data.message}`);
+      console.log("========================");
+      
+      res.json({ 
+        success: true, 
+        message: "Support request submitted successfully" 
+      });
     } catch (e) {
       res.status(400).json({ message: "Invalid input" });
     }

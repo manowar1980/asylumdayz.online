@@ -2,174 +2,216 @@ import { Navigation } from "@/components/Navigation";
 import { useBattlepassConfig, useBattlepassLevels } from "@/hooks/use-battlepass";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Lock, Unlock, Zap, Clock } from "lucide-react";
+import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function Battlepass() {
   const { data: config } = useBattlepassConfig();
   const { data: levels, isLoading } = useBattlepassLevels();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 5;
 
-  const themeColor = config?.themeColor === "tech-blue" ? "text-cyan-400" : "text-red-500";
-  const borderColor = config?.themeColor === "tech-blue" ? "border-cyan-500" : "border-red-500";
-  const bgGradient = config?.themeColor === "tech-blue" 
-    ? "from-cyan-900/20 to-black" 
-    : "from-red-900/20 to-black";
+  const themeColor = config?.themeColor === "tech-blue" ? "cyan" : "red";
+
+  const scrollLeft = () => {
+    if (currentPage > 0) setCurrentPage(currentPage - 1);
+  };
+
+  const scrollRight = () => {
+    if (levels && currentPage < Math.ceil(levels.length / itemsPerPage) - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const visibleLevels = levels?.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage) || [];
 
   return (
-    <div className="min-h-screen bg-black font-sans pb-20 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-zinc-900 via-black to-zinc-900 font-sans">
       <Navigation />
 
-      {/* Season Header */}
-      <div className={cn("relative py-20 bg-gradient-to-b border-b border-white/5", bgGradient)}>
-        <div className="max-w-7xl mx-auto px-4 text-center">
+      {/* Fallout-style Header Banner */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-900/20 via-yellow-600/10 to-amber-900/20" />
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1IiBoZWlnaHQ9IjUiPgo8cmVjdCB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjMDAwIiBmaWxsLW9wYWNpdHk9IjAuMiIvPgo8cGF0aCBkPSJNMCA1TDUgMFpNNiA0TDQgNlpNLTEgMUwxIC0xWiIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utb3BhY2l0eT0iMC4xIi8+Cjwvc3ZnPg==')] opacity-50" />
+        
+        <div className="relative max-w-7xl mx-auto px-4 py-6 sm:py-8">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col sm:flex-row items-center justify-between gap-4"
           >
-            <h2 className={cn("text-2xl md:text-3xl font-display uppercase tracking-[0.5em] mb-4 opacity-80", themeColor)}>
-              SEASON PASS
-            </h2>
-            <h1 className="text-6xl md:text-9xl font-tactical text-white mb-8 tracking-tighter uppercase relative inline-block">
-              {config?.seasonName || "GENESIS"}
-              <span className={cn("absolute -top-4 -right-8 text-sm font-mono px-2 py-1 bg-black/50 border rounded", borderColor, themeColor)}>
-                S01
-              </span>
-            </h1>
+            <div className="flex items-center gap-4">
+              <div className="text-xs sm:text-sm font-mono text-amber-400/80 bg-black/50 px-3 py-1 border border-amber-600/30">
+                RANK 1 / 50
+              </div>
+              <div className="text-xs sm:text-sm font-mono text-gray-400">
+                TOTAL CHALLENGES REWARDS: <span className="text-amber-400">5</span>
+              </div>
+            </div>
             
-            <div className="flex justify-center items-center gap-4 text-xl font-mono text-gray-400 bg-black/40 inline-block px-8 py-3 rounded-full border border-white/10 backdrop-blur-md">
-              <Clock className={cn("w-5 h-5", themeColor)} />
-              <span>TIME REMAINING: <span className="text-white font-bold">{config?.daysLeft || 25} DAYS</span></span>
+            <div className="flex items-center gap-2 bg-gradient-to-r from-red-900/80 to-red-800/80 px-4 sm:px-6 py-2 sm:py-3 border-2 border-red-600 shadow-lg shadow-red-900/50">
+              <span className="font-tactical text-xl sm:text-3xl text-white tracking-wider">BLOOD & RUST</span>
+            </div>
+
+            <div className="flex items-center gap-2 text-amber-400 font-mono text-sm">
+              <Clock className="w-4 h-4" />
+              <span>{config?.daysLeft || 25} DAYS LEFT</span>
             </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Battlepass Track */}
-      <div className="max-w-full mx-auto px-4 py-12 overflow-x-auto custom-scrollbar">
-        <div className="min-w-[1200px] px-8">
+      {/* Season Title */}
+      <div className="text-center py-6 sm:py-8 border-b border-amber-900/30">
+        <h1 className={cn(
+          "text-4xl sm:text-6xl md:text-7xl font-tactical tracking-wider",
+          themeColor === "cyan" ? "text-cyan-400" : "text-amber-400"
+        )}>
+          {config?.seasonName || "GENESIS"}
+        </h1>
+        <p className="text-gray-500 font-mono text-sm mt-2">SEASON 01 • SCOREBOARD</p>
+      </div>
+
+      {/* Scoreboard Grid - Fallout 76 Style */}
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
+        
+        {/* Navigation Arrows */}
+        <div className="flex items-center justify-between mb-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={scrollLeft}
+            disabled={currentPage === 0}
+            className="text-amber-400 hover:bg-amber-900/20 disabled:opacity-30 h-10 w-10 sm:h-12 sm:w-12"
+            data-testid="button-battlepass-prev"
+          >
+            <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
+          </Button>
           
-          <div className="grid grid-rows-[auto_1fr_1fr] gap-6">
-             {/* Level Indicators */}
-             <div className="flex gap-4 mb-4">
-               {levels?.map((lvl) => (
-                 <div key={lvl.id} className="w-48 text-center font-tactical text-2xl text-gray-600">
-                   LVL {lvl.level}
-                 </div>
-               ))}
-               {/* Skeletons if loading */}
-               {isLoading && Array(5).fill(0).map((_, i) => (
-                 <Skeleton key={i} className="w-48 h-8 bg-white/5" />
-               ))}
-             </div>
-
-             {/* Free Tier Row */}
-             <div className="flex gap-4">
-                <div className="w-24 flex items-center justify-center font-display font-bold text-gray-500 rotate-180 writing-mode-vertical">
-                  FREE
-                </div>
-                {levels?.map((lvl) => (
-                  <BattlepassCard 
-                    key={`free-${lvl.id}`} 
-                    type="free" 
-                    reward={lvl.freeReward} 
-                    image={lvl.imageUrl}
-                    unlocked={true} 
-                  />
-                ))}
-                 {isLoading && Array(5).fill(0).map((_, i) => (
-                   <Skeleton key={i} className="w-48 h-64 bg-white/5" />
-                 ))}
-             </div>
-
-             {/* Premium Tier Row */}
-             <div className="flex gap-4">
-                <div className={cn("w-24 flex items-center justify-center font-display font-bold rotate-180 writing-mode-vertical", themeColor)}>
-                  PREMIUM
-                </div>
-                {levels?.map((lvl) => (
-                  <BattlepassCard 
-                    key={`prem-${lvl.id}`} 
-                    type="premium" 
-                    reward={lvl.premiumReward} 
-                    image={lvl.imageUrl}
-                    isPremium 
-                    themeColor={config?.themeColor as any}
-                  />
-                ))}
-                {isLoading && Array(5).fill(0).map((_, i) => (
-                   <Skeleton key={i} className="w-48 h-64 bg-white/5" />
-                 ))}
-             </div>
+          <div className="font-mono text-gray-500 text-sm">
+            PAGE {currentPage + 1} / {levels ? Math.ceil(levels.length / itemsPerPage) : 1}
           </div>
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={scrollRight}
+            disabled={!levels || currentPage >= Math.ceil(levels.length / itemsPerPage) - 1}
+            className="text-amber-400 hover:bg-amber-900/20 disabled:opacity-30 h-10 w-10 sm:h-12 sm:w-12"
+            data-testid="button-battlepass-next"
+          >
+            <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
+          </Button>
+        </div>
 
+        {/* Reward Cards Grid */}
+        <div ref={scrollRef} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          {isLoading && Array(5).fill(0).map((_, i) => (
+            <Skeleton key={i} className="aspect-[3/4] bg-zinc-800/50" />
+          ))}
+          
+          {visibleLevels.map((lvl, idx) => (
+            <motion.div
+              key={lvl.id}
+              initial={{ opacity: 0, scale: 0.9, rotateY: -10 }}
+              animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+              transition={{ delay: idx * 0.1 }}
+            >
+              <ScoreboardCard
+                level={lvl.level}
+                freeReward={lvl.freeReward}
+                premiumReward={lvl.premiumReward}
+                themeColor={themeColor}
+              />
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Bottom Navigation Bar - Fallout Style */}
+        <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-2 sm:gap-4 text-xs font-mono border-t border-amber-900/30 pt-6">
+          {["CLAIM", "RANK UP", "TUTORIAL", "S.C.O.R.E", "CHALLENGES"].map((item) => (
+            <div
+              key={item}
+              className="px-3 sm:px-4 py-2 bg-black/50 border border-amber-900/50 text-amber-500 hover:bg-amber-900/20 cursor-pointer transition-colors"
+            >
+              {item}
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function BattlepassCard({ 
-  type, 
-  reward, 
-  image,
-  isPremium, 
-  unlocked = false,
-  themeColor = "tech-blue" 
-}: { 
-  type: "free" | "premium", 
-  reward: string, 
-  image?: string | null,
-  isPremium?: boolean, 
-  unlocked?: boolean,
-  themeColor?: "tech-blue" | "red"
+function ScoreboardCard({
+  level,
+  freeReward,
+  premiumReward,
+  themeColor,
+}: {
+  level: number;
+  freeReward: string;
+  premiumReward: string;
+  themeColor: "cyan" | "red";
 }) {
-  const accentColor = themeColor === "tech-blue" ? "cyan" : "red";
-  
+  const accentColor = themeColor === "cyan" ? "cyan" : "amber";
+  const isLocked = level > 1;
+
   return (
     <div className={cn(
-      "w-48 h-64 relative group flex flex-col items-center justify-between p-4 border transition-all duration-300",
-      isPremium 
-        ? `bg-${accentColor}-950/10 border-${accentColor}-900/50 hover:border-${accentColor}-500` 
-        : "bg-gray-900/20 border-gray-800 hover:border-gray-600"
+      "relative aspect-[3/4] bg-gradient-to-b from-zinc-800 to-zinc-900 border-2 overflow-hidden group transition-all duration-300 hover:scale-105",
+      `border-${accentColor}-900/50 hover:border-${accentColor}-500`
     )}>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
-      
-      {/* Top Status */}
-      <div className="w-full flex justify-between items-start z-10">
-        {isPremium ? (
-          <Lock className={cn("w-4 h-4", `text-${accentColor}-500`)} />
-        ) : (
-          <Unlock className="w-4 h-4 text-gray-500" />
-        )}
-        {isPremium && <Zap className={cn("w-4 h-4", `text-${accentColor}-400`)} />}
-      </div>
-
-      {/* Image Placeholder */}
-      <div className="relative z-10 w-24 h-24 bg-black/50 rounded-full border border-white/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-300">
-        {image ? (
-            <img src={image} alt={reward} className="w-full h-full object-cover rounded-full opacity-80" />
-        ) : (
-            <div className={cn("text-4xl font-tactical opacity-20", isPremium ? `text-${accentColor}-500` : "text-gray-500")}>
-              ?
-            </div>
-        )}
-      </div>
-
-      {/* Reward Name */}
-      <div className="text-center z-10">
-        <p className={cn(
-          "font-display font-bold text-sm uppercase tracking-wide",
-          isPremium ? `text-${accentColor}-100` : "text-gray-300"
-        )}>
-          {reward}
-        </p>
-      </div>
-
-      {/* Hover Effect Border */}
+      {/* Card Header - Level Number */}
       <div className={cn(
-        "absolute inset-0 border-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none",
-        isPremium ? `border-${accentColor}-500 box-shadow-glow-${accentColor}` : "border-white"
+        "absolute top-0 left-0 right-0 py-1 sm:py-2 text-center font-tactical text-lg sm:text-xl border-b",
+        `bg-${accentColor}-900/30 border-${accentColor}-700/50 text-${accentColor}-400`
+      )}>
+        {level}
+      </div>
+
+      {/* Main Reward Image Area */}
+      <div className="absolute inset-0 top-8 sm:top-10 flex flex-col">
+        {/* Premium Reward (Top Half) */}
+        <div className={cn(
+          "flex-1 flex flex-col items-center justify-center p-2 border-b relative",
+          `border-${accentColor}-900/30 bg-gradient-to-b from-${accentColor}-950/20 to-transparent`
+        )}>
+          <Crown className={cn("w-6 h-6 sm:w-8 sm:h-8 mb-1 sm:mb-2", `text-${accentColor}-500`)} />
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-black/50 rounded border border-white/10 flex items-center justify-center mb-1 sm:mb-2">
+            <Gift className={cn("w-6 h-6 sm:w-8 sm:h-8 opacity-50", `text-${accentColor}-400`)} />
+          </div>
+          <p className={cn("text-center text-xs font-display uppercase leading-tight line-clamp-2", `text-${accentColor}-200`)}>
+            {premiumReward}
+          </p>
+          {isLocked && (
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+              <Lock className="w-4 h-4 sm:w-6 sm:h-6 text-gray-500" />
+            </div>
+          )}
+        </div>
+
+        {/* Free Reward (Bottom Half) */}
+        <div className="flex-1 flex flex-col items-center justify-center p-2 bg-black/20 relative">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-black/50 rounded border border-white/10 flex items-center justify-center mb-1 sm:mb-2">
+            <Gift className="w-4 h-4 sm:w-6 sm:h-6 text-gray-500" />
+          </div>
+          <p className="text-center text-xs text-gray-400 font-display uppercase leading-tight line-clamp-2">
+            {freeReward}
+          </p>
+          <div className="absolute bottom-1 left-0 right-0 text-center">
+            <span className="text-xs text-gray-600 font-mono">FREE</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Glow Effect on Hover */}
+      <div className={cn(
+        "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none",
+        `shadow-[inset_0_0_30px_rgba(var(--${accentColor}-glow),0.3)]`
       )} />
     </div>
   );
