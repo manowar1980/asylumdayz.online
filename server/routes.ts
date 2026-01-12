@@ -55,8 +55,9 @@ export async function registerRoutes(
       const config = api.battlepass.updateConfig.input.parse(req.body);
       const updated = await storage.updateBattlepassConfig(config);
       res.json(updated);
-    } catch (e) {
-      res.status(400).json({ message: "Invalid input" });
+    } catch (e: any) {
+      console.error("Error updating battlepass config:", e);
+      res.status(400).json({ message: e.message || "Invalid input" });
     }
   });
 
@@ -75,14 +76,15 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.battlepass.updateLevel.path, requireAdmin, async (req, res) => {
+  app.patch(api.battlepass.updateLevel.path, requireAdmin, async (req, res) => {
     try {
       const level = api.battlepass.updateLevel.input.parse(req.body);
       const updated = await storage.updateBattlepassLevel(Number(req.params.id), level);
       if (!updated) return res.status(404).json({ message: "Not found" });
       res.json(updated);
-    } catch (e) {
-      res.status(400).json({ message: "Invalid input" });
+    } catch (e: any) {
+      console.error("Error updating battlepass level:", e);
+      res.status(400).json({ message: e.message || "Invalid input" });
     }
   });
 

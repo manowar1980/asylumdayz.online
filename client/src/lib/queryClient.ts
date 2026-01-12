@@ -53,11 +53,9 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     };
 
-    if (Object.keys(headers).length > 0) {
+    if (headers && Object.keys(headers).length > 0) {
       fetchOptions.headers = headers;
     }
-
-    console.log("Fetching URL:", url, "with options:", fetchOptions);
 
     const res = await fetch(url, fetchOptions);
 

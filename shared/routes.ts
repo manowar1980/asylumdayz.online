@@ -58,7 +58,7 @@ export const api = {
       },
     },
     updateLevel: {
-      method: 'PUT' as const,
+      method: 'PATCH' as const,
       path: '/api/battlepass/levels/:id',
       input: insertBattlepassLevelSchema.partial(),
       responses: {
