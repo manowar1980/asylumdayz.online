@@ -41,18 +41,25 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const adminCode = localStorage.getItem("admin_override") === "true" ? "1327" : null;
-    const headers: Record<string, string> = {
-      "credentials": "include",
-    };
+    const headers: Record<string, string> = {};
     
     if (adminCode) {
       headers["x-admin-code"] = adminCode;
     }
 
-    const res = await fetch(queryKey.join("/") as string, {
-      headers,
+    const url = "/" + queryKey.join("/");
+    // Only add headers if they are needed, but ALWAYS include credentials for auth
+    const fetchOptions: RequestInit = {
       credentials: "include",
-    });
+    };
+
+    if (Object.keys(headers).length > 0) {
+      fetchOptions.headers = headers;
+    }
+
+    console.log("Fetching URL:", url, "with options:", fetchOptions);
+
+    const res = await fetch(url, fetchOptions);
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;

@@ -61,7 +61,7 @@ export default function Battlepass() {
       if (data.success) {
         localStorage.setItem("admin_override", "true");
         toast({ title: "Access Granted", description: "Redirecting to Admin Console..." });
-        setLocation("/admin");
+        window.location.href = "/admin";
       } else {
         toast({ title: "Access Denied", description: "Invalid secret code.", variant: "destructive" });
       }

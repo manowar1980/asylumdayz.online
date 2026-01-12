@@ -20,10 +20,8 @@ export async function registerRoutes(
   const requireAdmin = async (req: any, res: any, next: any) => {
     // Check for secret code bypass in header (for easier admin access)
     const authHeader = req.headers["x-admin-code"];
-    console.log(`Checking admin access. Auth header: [${authHeader}]`);
     
     if (authHeader === "1327") {
-      console.log("Admin bypass granted via header");
       return next();
     }
 
