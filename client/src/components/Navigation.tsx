@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { ShieldCheck, LogIn, LogOut, Menu, X } from "lucide-react";
+import { ShieldCheck, LogIn, LogOut, Menu, X, Users } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -85,16 +85,29 @@ export function Navigation() {
               <div className="w-8 h-8 bg-gray-800 rounded-full animate-pulse" />
             ) : isAuthenticated && user ? (
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded border border-white/10">
-                  <Avatar className="w-7 h-7 border border-red-900">
-                    <AvatarImage src={user.profileImageUrl || undefined} alt={getDisplayName()} />
-                    <AvatarFallback className="bg-red-900/50 text-white text-xs">
-                      {getUserInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-gray-300 font-mono max-w-[100px] truncate">
-                    {getDisplayName()}
-                  </span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded border border-white/10">
+                    <Avatar className="w-7 h-7 border border-red-900">
+                      <AvatarImage src={user.profileImageUrl || undefined} alt={getDisplayName()} />
+                      <AvatarFallback className="bg-red-900/50 text-white text-xs">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-gray-300 font-mono max-w-[100px] truncate">
+                      {getDisplayName()}
+                    </span>
+                  </div>
+                  <Link href="/factions">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full text-[10px] font-mono h-7 border border-white/5 hover:bg-white/10 text-gray-400 hover:text-white justify-start px-2"
+                      data-testid="button-manage-factions"
+                    >
+                      <Users className="w-3 h-3 mr-1.5 text-blue-400" />
+                      MANAGE FACTIONS
+                    </Button>
+                  </Link>
                 </div>
                 <Button 
                   onClick={() => logout()} 
@@ -177,7 +190,19 @@ export function Navigation() {
                     </Avatar>
                     <div>
                       <p className="text-white font-display text-sm">{getDisplayName()}</p>
-                      <p className="text-gray-500 text-xs font-mono">{user.email}</p>
+                      <p className="text-gray-500 text-xs font-mono mb-2">{user.email}</p>
+                      <Link href="/factions">
+                        <Button 
+                          onClick={() => setIsMobileOpen(false)}
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full h-9 border-white/10 text-white hover:bg-white/5 justify-start px-3 text-xs font-mono"
+                          data-testid="button-mobile-manage-factions"
+                        >
+                          <Users className="w-3 h-3 mr-2 text-blue-400" />
+                          MANAGE FACTIONS
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                   <Button 
