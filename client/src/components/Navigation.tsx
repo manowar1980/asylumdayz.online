@@ -53,8 +53,8 @@ export function Navigation() {
               <div className="relative w-8 h-8 sm:w-10 sm:h-10 overflow-hidden rounded border border-red-900 group-hover:border-red-500 transition-colors">
                 <img src={logoImg} alt="Asylum Logo" className="object-cover w-full h-full" />
               </div>
-              <span className="font-tactical text-lg sm:text-2xl tracking-widest text-white group-hover:text-red-500 transition-colors duration-300">
-                <span className="hidden xs:inline">ASYLUM </span><span className="text-red-600">DAYZ</span>
+              <span className="font-tactical text-lg sm:text-2xl tracking-widest text-white group-hover:text-red-500 transition-colors duration-300 flex items-center gap-2">
+                <span className="xs:inline">ASYLUM </span><span className="text-red-600">DAYZ</span>
               </span>
             </div>
           </Link>
