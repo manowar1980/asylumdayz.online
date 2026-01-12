@@ -32,6 +32,21 @@ export const insertServerSchema = createInsertSchema(servers);
 export const insertBattlepassConfigSchema = createInsertSchema(battlepassConfig);
 export const insertBattlepassLevelSchema = createInsertSchema(battlepassLevels);
 
+export const supportRequests = pgTable("support_requests", {
+  id: serial("id").primaryKey(),
+  name: text("name"),
+  email: text("email"),
+  discordUsername: text("discord_username"),
+  category: text("category").notNull(),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertSupportRequestSchema = createInsertSchema(supportRequests);
+
 export type Server = typeof servers.$inferSelect;
 export type BattlepassConfig = typeof battlepassConfig.$inferSelect;
 export type BattlepassLevel = typeof battlepassLevels.$inferSelect;
+export type SupportRequest = typeof supportRequests.$inferSelect;

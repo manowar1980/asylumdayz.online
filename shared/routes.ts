@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertServerSchema, insertBattlepassConfigSchema, insertBattlepassLevelSchema, servers, battlepassConfig, battlepassLevels } from './schema';
+import { insertServerSchema, insertBattlepassConfigSchema, insertBattlepassLevelSchema, servers, battlepassConfig, battlepassLevels, supportRequests } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -85,6 +85,24 @@ export const api = {
       responses: {
         200: z.object({ success: z.boolean(), message: z.string() }),
         400: errorSchemas.validation,
+      },
+    },
+    list: {
+      method: 'GET' as const,
+      path: '/api/support',
+      responses: {
+        200: z.array(z.custom<typeof supportRequests.$inferSelect>()),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    updateStatus: {
+      method: 'PATCH' as const,
+      path: '/api/support/:id',
+      input: z.object({ status: z.string() }),
+      responses: {
+        200: z.custom<typeof supportRequests.$inferSelect>(),
+        401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
       },
     },
   },

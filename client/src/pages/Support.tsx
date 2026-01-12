@@ -24,10 +24,8 @@ export default function Support() {
 
   const supportMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return await apiRequest("/api/support", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest("POST", "/api/support", data);
+      return res.json();
     },
     onSuccess: () => {
       toast({

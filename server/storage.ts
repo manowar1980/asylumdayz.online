@@ -3,13 +3,14 @@ import {
   servers,
   battlepassConfig,
   battlepassLevels,
+  supportRequests,
   type Server,
   type BattlepassConfig,
   type BattlepassLevel,
-  type InsertUser, // From auth
-  users // From auth
+  type SupportRequest,
+  users
 } from "@shared/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Servers
@@ -24,6 +25,11 @@ export interface IStorage {
   getBattlepassLevel(id: number): Promise<BattlepassLevel | undefined>;
   createBattlepassLevel(level: typeof battlepassLevels.$inferInsert): Promise<BattlepassLevel>;
   updateBattlepassLevel(id: number, level: Partial<typeof battlepassLevels.$inferInsert>): Promise<BattlepassLevel>;
+  
+  // Support
+  getSupportRequests(): Promise<SupportRequest[]>;
+  createSupportRequest(request: typeof supportRequests.$inferInsert): Promise<SupportRequest>;
+  updateSupportRequestStatus(id: number, status: string): Promise<SupportRequest>;
   
   // User (Admin check)
   getUser(id: string): Promise<typeof users.$inferSelect | undefined>;
@@ -44,7 +50,6 @@ export class DatabaseStorage implements IStorage {
   async getBattlepassConfig(): Promise<BattlepassConfig> {
     const [config] = await db.select().from(battlepassConfig).limit(1);
     if (!config) {
-      // Create default if not exists
       const [newConfig] = await db.insert(battlepassConfig).values({}).returning();
       return newConfig;
     }
@@ -80,6 +85,25 @@ export class DatabaseStorage implements IStorage {
       .update(battlepassLevels)
       .set(level)
       .where(eq(battlepassLevels.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Support
+  async getSupportRequests(): Promise<SupportRequest[]> {
+    return await db.select().from(supportRequests).orderBy(desc(supportRequests.id));
+  }
+
+  async createSupportRequest(request: typeof supportRequests.$inferInsert): Promise<SupportRequest> {
+    const [newRequest] = await db.insert(supportRequests).values(request).returning();
+    return newRequest;
+  }
+
+  async updateSupportRequestStatus(id: number, status: string): Promise<SupportRequest> {
+    const [updated] = await db
+      .update(supportRequests)
+      .set({ status })
+      .where(eq(supportRequests.id, id))
       .returning();
     return updated;
   }

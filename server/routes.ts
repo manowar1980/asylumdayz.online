@@ -73,26 +73,44 @@ export async function registerRoutes(
     }
   });
 
-  // Support Form - Logs to console (in production, this would send an email)
+  // Support - Submit new request (public)
   app.post(api.support.submit.path, async (req, res) => {
     try {
       const data = supportRequestSchema.parse(req.body);
       
-      // Log the support request (in a real app, send email to damian.discord10@gmail.com)
-      console.log("=== SUPPORT REQUEST ===");
-      console.log(`To: damian.discord10@gmail.com`);
-      console.log(`From: ${data.email || "Not provided"}`);
-      console.log(`Name: ${data.name || "Not provided"}`);
-      console.log(`Discord: ${data.discordUsername || "Not provided"}`);
-      console.log(`Category: ${data.category}`);
-      console.log(`Subject: ${data.subject}`);
-      console.log(`Message: ${data.message}`);
-      console.log("========================");
+      await storage.createSupportRequest({
+        name: data.name || null,
+        email: data.email || null,
+        discordUsername: data.discordUsername || null,
+        category: data.category,
+        subject: data.subject,
+        message: data.message,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
       
       res.json({ 
         success: true, 
         message: "Support request submitted successfully" 
       });
+    } catch (e) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  // Support - List all requests (admin only)
+  app.get(api.support.list.path, requireAdmin, async (req, res) => {
+    const requests = await storage.getSupportRequests();
+    res.json(requests);
+  });
+
+  // Support - Update status (admin only)
+  app.patch(api.support.updateStatus.path, requireAdmin, async (req, res) => {
+    try {
+      const { status } = api.support.updateStatus.input.parse(req.body);
+      const updated = await storage.updateSupportRequestStatus(Number(req.params.id), status);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
     } catch (e) {
       res.status(400).json({ message: "Invalid input" });
     }
