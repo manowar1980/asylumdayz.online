@@ -1,10 +1,18 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { ShieldCheck, LogIn, LogOut, Menu, X, Users } from "lucide-react";
+import { ShieldCheck, LogIn, LogOut, Menu, X, Users, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import logoImg from "@assets/Asylum_Image_(logo)_1768056666318.jpeg";
 
 export function Navigation() {
@@ -85,39 +93,40 @@ export function Navigation() {
               <div className="w-8 h-8 bg-gray-800 rounded-full animate-pulse" />
             ) : isAuthenticated && user ? (
               <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded border border-white/10">
-                    <Avatar className="w-7 h-7 border border-red-900">
-                      <AvatarImage src={user.profileImageUrl || undefined} alt={getDisplayName()} />
-                      <AvatarFallback className="bg-red-900/50 text-white text-xs">
-                        {getUserInitials()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs text-gray-300 font-mono max-w-[100px] truncate">
-                      {getDisplayName()}
-                    </span>
-                  </div>
-                  <Link href="/factions">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full text-[10px] font-mono h-7 border border-white/5 hover:bg-white/10 text-gray-400 hover:text-white justify-start px-2"
-                      data-testid="button-manage-factions"
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group/profile">
+                      <Avatar className="w-7 h-7 border border-red-900 group-hover/profile:border-red-500 transition-colors">
+                        <AvatarImage src={user.profileImageUrl || undefined} alt={getDisplayName()} />
+                        <AvatarFallback className="bg-red-900/50 text-white text-xs">
+                          {getUserInitials()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs text-gray-300 font-mono max-w-[100px] truncate group-hover/profile:text-white transition-colors">
+                        {getDisplayName()}
+                      </span>
+                      <ChevronDown className="w-3 h-3 text-gray-500 group-hover/profile:text-white transition-colors" />
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 bg-zinc-950 border-white/10 text-white p-2">
+                    <DropdownMenuLabel className="font-tactical text-xs tracking-widest text-gray-400">COMMANDER INTERFACE</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-white/5" />
+                    <DropdownMenuItem asChild className="focus:bg-red-900/20 focus:text-white cursor-pointer py-2.5">
+                      <Link href="/factions" className="flex items-center">
+                        <Users className="w-4 h-4 mr-2 text-blue-400" />
+                        <span>MANAGE FACTIONS</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-white/5" />
+                    <DropdownMenuItem 
+                      onClick={() => logout()}
+                      className="focus:bg-red-900/40 text-red-500 focus:text-red-400 cursor-pointer py-2.5"
                     >
-                      <Users className="w-3 h-3 mr-1.5 text-blue-400" />
-                      MANAGE FACTIONS
-                    </Button>
-                  </Link>
-                </div>
-                <Button 
-                  onClick={() => logout()} 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-red-500 hover:text-red-400 hover:bg-red-950/30 h-9"
-                  data-testid="button-logout"
-                >
-                  <LogOut className="w-4 h-4" />
-                </Button>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      <span>LOGOUT SYSTEM</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : (
               <a href="/api/login">
