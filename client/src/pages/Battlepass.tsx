@@ -176,16 +176,14 @@ export default function Battlepass() {
                 <Clock className="w-4 h-4" />
                 <span>{config?.daysLeft || 25} DAYS LEFT</span>
               </div>
-              {battlepassProduct && (
-                <Button
-                  onClick={() => setShowPurchaseDialog(true)}
-                  className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-tactical text-sm px-4 py-2 gap-2 shadow-lg shadow-amber-900/50"
-                  data-testid="button-buy-battlepass"
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  BUY PASS
-                </Button>
-              )}
+              <Button
+                onClick={() => setShowPurchaseDialog(true)}
+                className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-tactical text-sm px-4 py-2 gap-2 shadow-lg shadow-amber-900/50"
+                data-testid="button-buy-battlepass"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                BUY PASS
+              </Button>
             </div>
           </motion.div>
         </div>
