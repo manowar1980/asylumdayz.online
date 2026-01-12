@@ -8,12 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Edit, Mail, CheckCircle, Clock, AlertTriangle } from "lucide-react";
+import { Loader2, Edit, Mail, CheckCircle, Clock, AlertTriangle, ImagePlus, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertBattlepassConfigSchema, insertBattlepassLevelSchema } from "@shared/schema";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -239,7 +239,11 @@ function SeasonConfigForm({ initialData }: { initialData?: any }) {
 
 function LevelEditorRow({ level }: { level: any }) {
   const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(level.imageUrl || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const updateLevel = useUpdateLevel();
+  const { toast } = useToast();
 
   const formSchema = insertBattlepassLevelSchema.pick({ freeReward: true, premiumReward: true, imageUrl: true });
   const form = useForm<z.infer<typeof formSchema>>({
@@ -250,6 +254,44 @@ function LevelEditorRow({ level }: { level: any }) {
       imageUrl: level.imageUrl || ""
     }
   });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await fetch("/api/upload/battlepass-image", {
+        method: "POST",
+        headers: {
+          "x-admin-code": "1327"
+        },
+        body: formData
+      });
+      
+      if (!res.ok) throw new Error("Upload failed");
+      
+      const data = await res.json();
+      form.setValue("imageUrl", data.imageUrl);
+      setImagePreview(data.imageUrl);
+      toast({ title: "Image uploaded successfully" });
+    } catch (error) {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const clearImage = () => {
+    form.setValue("imageUrl", "");
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     updateLevel.mutate(
@@ -272,7 +314,7 @@ function LevelEditorRow({ level }: { level: any }) {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="ghost" size="sm" className="hover:bg-white/10 text-gray-400 hover:text-white h-9 self-end sm:self-auto">
+          <Button variant="ghost" size="sm" className="hover:bg-white/10 text-gray-400 hover:text-white h-9 self-end sm:self-auto" data-testid={`button-edit-level-${level.level}`}>
             <Edit className="w-4 h-4 mr-2" /> EDIT
           </Button>
         </DialogTrigger>
@@ -291,10 +333,50 @@ function LevelEditorRow({ level }: { level: any }) {
               <Input {...form.register("premiumReward")} className="bg-black/50 border-blue-900/50 focus:border-blue-500 h-10 sm:h-12" />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm">Image URL (Optional)</Label>
-              <Input {...form.register("imageUrl")} className="bg-black/50 border-white/20 h-10 sm:h-12" placeholder="https://..." />
+              <Label className="text-sm">Reward Image</Label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="hidden"
+                data-testid={`input-image-upload-${level.level}`}
+              />
+              {imagePreview ? (
+                <div className="relative inline-block">
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="h-20 rounded object-cover border border-white/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    data-testid={`button-remove-image-${level.level}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full bg-black/50 border-white/20 text-gray-400 hover:text-white h-10 sm:h-12"
+                  data-testid={`button-upload-image-${level.level}`}
+                >
+                  {uploading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <ImagePlus className="w-4 h-4 mr-2" />
+                  )}
+                  {uploading ? "UPLOADING..." : "UPLOAD IMAGE"}
+                </Button>
+              )}
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 h-10 sm:h-12" disabled={updateLevel.isPending}>
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 h-10 sm:h-12" disabled={updateLevel.isPending || uploading}>
               {updateLevel.isPending ? "SAVING..." : "SAVE CHANGES"}
             </Button>
           </form>

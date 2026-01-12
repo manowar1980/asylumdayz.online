@@ -10,6 +10,8 @@ import { eq, sql } from "drizzle-orm";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import OpenAI from "openai";
 import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -114,6 +116,39 @@ export async function registerRoutes(
     } catch (e) {
       res.status(400).json({ message: "Invalid input" });
     }
+  });
+
+  // Battlepass image upload
+  const uploadsDir = path.join(process.cwd(), "public", "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  
+  const imageStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => {
+      const uniqueName = `bp-${Date.now()}-${Math.random().toString(36).substring(7)}${path.extname(file.originalname)}`;
+      cb(null, uniqueName);
+    }
+  });
+  
+  const imageUpload = multer({
+    storage: imageStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      const allowed = /jpeg|jpg|png|gif|webp/;
+      const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+      const mime = allowed.test(file.mimetype);
+      cb(null, ext && mime);
+    }
+  });
+
+  app.post("/api/upload/battlepass-image", requireAdmin, imageUpload.single("image"), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image uploaded" });
+    }
+    const imageUrl = `/uploads/${req.file.filename}`;
+    res.json({ imageUrl });
   });
 
   // Secret Admin Access

@@ -5,9 +5,13 @@ import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import path from "path";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Serve uploaded files
+app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 
 declare module "http" {
   interface IncomingMessage {
