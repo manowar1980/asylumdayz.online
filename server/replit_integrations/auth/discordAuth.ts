@@ -3,9 +3,10 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+// @ts-ignore
+import DiscordStrategyModule from "passport-discord";
 
-// Discord OAuth2 Strategy
-const DiscordStrategy = require("passport-discord").Strategy;
+const DiscordStrategy = DiscordStrategyModule.Strategy;
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -35,11 +36,23 @@ export async function setupDiscordAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Always set up serialize/deserialize even if Discord OAuth isn't configured
+  passport.serializeUser((user: any, cb) => cb(null, user));
+  passport.deserializeUser((user: any, cb) => cb(null, user));
+
   const clientID = process.env.DISCORD_CLIENT_ID;
   const clientSecret = process.env.DISCORD_CLIENT_SECRET;
   
   if (!clientID || !clientSecret) {
     console.warn("Discord OAuth not configured: missing DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET");
+    
+    // Fallback routes when Discord is not configured
+    app.get("/api/login", (req, res) => {
+      res.status(503).json({ message: "Discord login not configured. Please add DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET." });
+    });
+    app.get("/api/logout", (req, res) => {
+      req.logout(() => res.redirect("/"));
+    });
     return;
   }
 
@@ -77,9 +90,6 @@ export async function setupDiscordAuth(app: Express) {
       done(error, null);
     }
   }));
-
-  passport.serializeUser((user: any, cb) => cb(null, user));
-  passport.deserializeUser((user: any, cb) => cb(null, user));
 
   app.get("/api/login", passport.authenticate("discord"));
 
