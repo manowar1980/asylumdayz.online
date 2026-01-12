@@ -56,16 +56,8 @@ export async function setupDiscordAuth(app: Express) {
     return;
   }
 
-  const domains = process.env.REPLIT_DOMAINS?.split(",") || [];
-  const primaryDomain = domains[0] || `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-  const callbackURL = `https://${primaryDomain}/api/callback`;
-
-  passport.use(new DiscordStrategy({
-    clientID,
-    clientSecret,
-    callbackURL,
-    scope: ["identify", "email"]
-  }, async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+  // Use dynamic callback URL based on request hostname
+  const verifyCallback = async (accessToken: string, refreshToken: string, profile: any, done: any) => {
     try {
       const user = await authStorage.upsertUser({
         id: profile.id,
@@ -89,16 +81,32 @@ export async function setupDiscordAuth(app: Express) {
     } catch (error) {
       done(error, null);
     }
-  }));
+  };
 
-  app.get("/api/login", passport.authenticate("discord"));
-
-  app.get("/api/callback", 
-    passport.authenticate("discord", { failureRedirect: "/" }),
-    (req, res) => {
-      res.redirect("/");
+  // Register strategy per-request to use dynamic callback URL
+  app.get("/api/login", (req, res, next) => {
+    const callbackURL = `https://${req.hostname}/api/callback`;
+    const strategyName = `discord-${req.hostname}`;
+    
+    // Register strategy if not already registered
+    if (!(passport as any)._strategies[strategyName]) {
+      passport.use(strategyName, new DiscordStrategy({
+        clientID,
+        clientSecret,
+        callbackURL,
+        scope: ["identify", "email"]
+      }, verifyCallback));
     }
-  );
+    
+    passport.authenticate(strategyName)(req, res, next);
+  });
+
+  app.get("/api/callback", (req, res, next) => {
+    const strategyName = `discord-${req.hostname}`;
+    passport.authenticate(strategyName, { failureRedirect: "/" })(req, res, () => {
+      res.redirect("/");
+    });
+  });
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
