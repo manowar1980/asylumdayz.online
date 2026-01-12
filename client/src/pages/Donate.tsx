@@ -64,7 +64,7 @@ export default function Donate() {
               </div>
 
               <a 
-                href="https://paypal.me/asylumdayz" 
+                href="https://paypal.me/DamianBrigou" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="w-full"
