@@ -108,7 +108,11 @@ export async function registerRoutes(
     const { code } = req.body;
     const adminCode = process.env.ADMIN_SECRET_CODE;
     
-    if (code && adminCode && code === adminCode) {
+    // Using a more robust comparison to handle hidden characters or formatting
+    const normalizedInput = String(code || "").trim();
+    const normalizedSecret = String(adminCode || "").trim();
+    
+    if (normalizedInput && normalizedSecret && normalizedInput === normalizedSecret) {
       // If user is logged in, we can promote them to admin for this session
       if (req.isAuthenticated()) {
         const userProfile = req.user as any;
