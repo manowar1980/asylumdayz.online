@@ -2,15 +2,16 @@ import { Navigation } from "@/components/Navigation";
 import { useBattlepassConfig, useBattlepassLevels } from "@/hooks/use-battlepass";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal } from "lucide-react";
+import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal, ShoppingCart, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Battlepass() {
   const { data: config } = useBattlepassConfig();
@@ -19,6 +20,7 @@ export default function Battlepass() {
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 5;
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const { toast } = useToast();
 
   // Secret code state
@@ -26,6 +28,60 @@ export default function Battlepass() {
   const [showSecretDialog, setShowSecretDialog] = useState(false);
   const [secretCode, setSecretCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+
+  // Purchase state
+  const [showPurchaseDialog, setShowPurchaseDialog] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+
+  const { data: battlepassProduct } = useQuery<{
+    id: string;
+    name: string;
+    description: string;
+    price_id: string;
+    unit_amount: number;
+    currency: string;
+  }>({
+    queryKey: ['/api/battlepass/product'],
+  });
+
+  // Handle payment success/cancel from URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    if (params.get('success') === 'true') {
+      toast({ 
+        title: "Purchase Successful!", 
+        description: "Welcome to the Premium Battlepass. Enjoy your rewards!" 
+      });
+      window.history.replaceState({}, '', '/battlepass');
+    } else if (params.get('canceled') === 'true') {
+      toast({ 
+        title: "Purchase Canceled", 
+        description: "Your payment was not processed.",
+        variant: "destructive"
+      });
+      window.history.replaceState({}, '', '/battlepass');
+    }
+  }, [searchString, toast]);
+
+  const handlePurchase = async () => {
+    setIsPurchasing(true);
+    try {
+      const res = await apiRequest("POST", "/api/checkout/battlepass", {});
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL received");
+      }
+    } catch (err) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to start checkout. Please try again.", 
+        variant: "destructive" 
+      });
+      setIsPurchasing(false);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -115,9 +171,21 @@ export default function Battlepass() {
               <span className="font-tactical text-xl sm:text-3xl text-white tracking-wider">BLOOD & RUST</span>
             </div>
 
-            <div className="flex items-center gap-2 text-amber-400 font-mono text-sm">
-              <Clock className="w-4 h-4" />
-              <span>{config?.daysLeft || 25} DAYS LEFT</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-sm">
+                <Clock className="w-4 h-4" />
+                <span>{config?.daysLeft || 25} DAYS LEFT</span>
+              </div>
+              {battlepassProduct && (
+                <Button
+                  onClick={() => setShowPurchaseDialog(true)}
+                  className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-tactical text-sm px-4 py-2 gap-2 shadow-lg shadow-amber-900/50"
+                  data-testid="button-buy-battlepass"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  BUY PASS
+                </Button>
+              )}
             </div>
           </motion.div>
         </div>
@@ -150,6 +218,75 @@ export default function Battlepass() {
               {isVerifying ? "VERIFYING..." : "EXECUTE"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Purchase Battlepass Dialog */}
+      <Dialog open={showPurchaseDialog} onOpenChange={setShowPurchaseDialog}>
+        <DialogContent className="bg-gradient-to-b from-zinc-900 to-black border-amber-900/50 text-white">
+          <DialogHeader>
+            <DialogTitle className="font-tactical text-2xl text-amber-400 flex items-center gap-2">
+              <Crown className="w-6 h-6" />
+              PREMIUM BATTLEPASS
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Unlock all premium rewards for the current season
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 pt-4">
+            <div className="bg-black/50 border border-amber-900/30 p-4 rounded">
+              <h4 className="font-tactical text-amber-300 mb-2">INCLUDED:</h4>
+              <ul className="space-y-2 text-sm text-gray-300">
+                <li className="flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-amber-500" />
+                  50 Premium Reward Tiers
+                </li>
+                <li className="flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-amber-500" />
+                  Exclusive Tactical Gear
+                </li>
+                <li className="flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-amber-500" />
+                  Unique Weapon Skins
+                </li>
+                <li className="flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-amber-500" />
+                  Premium Season Badge
+                </li>
+              </ul>
+            </div>
+
+            <div className="text-center">
+              <div className="font-tactical text-4xl text-amber-400">
+                ${battlepassProduct?.unit_amount ? (battlepassProduct.unit_amount / 100).toFixed(2) : '9.99'}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">ONE-TIME PURCHASE</p>
+            </div>
+
+            <Button
+              onClick={handlePurchase}
+              disabled={isPurchasing}
+              className="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-tactical text-lg py-6 gap-2"
+              data-testid="button-confirm-purchase"
+            >
+              {isPurchasing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  PROCESSING...
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="w-5 h-5" />
+                  PURCHASE NOW
+                </>
+              )}
+            </Button>
+            
+            <p className="text-xs text-center text-gray-500">
+              Secure checkout powered by Stripe
+            </p>
+          </div>
         </DialogContent>
       </Dialog>
 
