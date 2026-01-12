@@ -106,11 +106,11 @@ export async function registerRoutes(
   // Secret Admin Access
   app.post("/api/admin/verify-code", async (req, res) => {
     const { code } = req.body;
-    const adminCode = process.env.ADMIN_SECRET_CODE;
+    const adminCode = "1327";
     
     // Using a more robust comparison to handle hidden characters or formatting
     const normalizedInput = String(code || "").trim();
-    const normalizedSecret = String(adminCode || "").trim();
+    const normalizedSecret = adminCode;
     
     if (normalizedInput && normalizedSecret && normalizedInput === normalizedSecret) {
       // If user is logged in, we can promote them to admin for this session
