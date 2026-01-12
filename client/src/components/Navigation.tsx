@@ -15,6 +15,7 @@ export function Navigation() {
   const links = [
     { href: "/", label: "HOME" },
     { href: "/info", label: "SERVERS" },
+    { href: "/maps", label: "MAPS" },
     { href: "/battlepass", label: "BATTLEPASS" },
     { href: "/donate", label: "DONATE" },
     { href: "/support", label: "SUPPORT" },
