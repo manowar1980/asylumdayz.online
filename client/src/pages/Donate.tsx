@@ -1,8 +1,9 @@
 import { Navigation } from "@/components/Navigation";
 import { TacticalCard } from "@/components/TacticalCard";
 import { Button } from "@/components/ui/button";
-import { Heart, Star, Gift, CheckCircle } from "lucide-react";
+import { Heart, DollarSign, Gift, CheckCircle } from "lucide-react";
 import { FaDiscord, FaPaypal } from "react-icons/fa";
+import { SiCashapp } from "react-icons/si";
 
 export default function Donate() {
   return (
@@ -79,46 +80,62 @@ export default function Donate() {
             </div>
           </TacticalCard>
 
-          {/* Priority Queue / Coming Soon */}
-          <TacticalCard title="PREMIUM PERKS" glowColor="blue">
+          {/* CashApp Donation */}
+          <TacticalCard title="CASHAPP DONATION" glowColor="blue">
             <div className="flex flex-col items-center py-6 sm:py-8">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-cyan-900/20 rounded-full flex items-center justify-center mb-4 sm:mb-6 border border-cyan-500/30">
-                <Star className="w-8 h-8 sm:w-10 sm:h-10 text-cyan-500" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-900/20 rounded-full flex items-center justify-center mb-4 sm:mb-6 border border-green-500/30">
+                <SiCashapp className="w-8 h-8 sm:w-10 sm:h-10 text-green-500" />
               </div>
               
               <p className="text-center text-gray-400 mb-6 font-mono text-xs sm:text-sm px-2 sm:px-4">
-                Monthly subscription coming soon! Skip queues, get exclusive gear, and support ongoing development.
+                Send donations directly via CashApp and receive exclusive Discord rewards!
               </p>
 
-              {/* Coming Soon Features */}
-              <div className="w-full bg-black/30 border border-cyan-900/30 p-3 sm:p-4 mb-6">
-                <h4 className="text-cyan-400 font-display text-sm mb-3 flex items-center gap-2">
-                  <Star className="w-4 h-4" />
-                  COMING SOON
+              {/* Rewards List */}
+              <div className="w-full bg-black/30 border border-green-900/30 p-3 sm:p-4 mb-6">
+                <h4 className="text-green-400 font-display text-sm mb-3 flex items-center gap-2">
+                  <Gift className="w-4 h-4" />
+                  DISCORD MEMBER REWARDS
                 </h4>
-                <ul className="space-y-2 text-xs sm:text-sm text-gray-500">
-                  <li className="flex items-center gap-2">
-                    <div className="w-3 h-3 sm:w-4 sm:h-4 border border-gray-600 rounded flex-shrink-0" />
-                    <span>Priority Server Queue</span>
+                <ul className="space-y-2 text-xs sm:text-sm">
+                  <li className="flex items-center gap-2 text-gray-300">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
+                    <span>$5+ — Supporter Role + Name Color</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-3 h-3 sm:w-4 sm:h-4 border border-gray-600 rounded flex-shrink-0" />
-                    <span>Monthly Exclusive Skins</span>
+                  <li className="flex items-center gap-2 text-gray-300">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
+                    <span>$10+ — Priority Queue Access</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-3 h-3 sm:w-4 sm:h-4 border border-gray-600 rounded flex-shrink-0" />
-                    <span>Private Events Access</span>
+                  <li className="flex items-center gap-2 text-gray-300">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
+                    <span>$25+ — VIP Role + Exclusive Channels</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-300">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
+                    <span>$50+ — Legendary Status + All Perks</span>
                   </li>
                 </ul>
               </div>
 
-              <Button 
-                className="w-full bg-cyan-700/50 text-white font-bold h-12 tracking-wider cursor-not-allowed"
-                disabled
-                data-testid="button-premium-soon"
+              <div className="flex items-center gap-2 text-xs text-amber-400 mb-4 font-mono">
+                <FaDiscord className="w-4 h-4" />
+                Must be in Discord to claim rewards
+              </div>
+
+              <a 
+                href="https://cash.app/$test" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-full"
               >
-                COMING SOON
-              </Button>
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-500 text-white font-bold h-12 tracking-wider"
+                  data-testid="button-donate-cashapp"
+                >
+                  <SiCashapp className="mr-2 w-5 h-5" />
+                  DONATE VIA CASHAPP
+                </Button>
+              </a>
             </div>
           </TacticalCard>
         </div>
