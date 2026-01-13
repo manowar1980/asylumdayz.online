@@ -462,7 +462,7 @@ function WeeklyChallengesManager() {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<WeeklyChallenge | null>(null);
   
-  const { data: challenges, isLoading } = useQuery<WeeklyChallenge[]>({
+  const { data: challenges, isLoading, refetch } = useQuery<WeeklyChallenge[]>({
     queryKey: ["/api/challenges"],
   });
 
@@ -471,8 +471,8 @@ function WeeklyChallengesManager() {
       const res = await apiRequest("POST", "/api/challenges", data);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+    onSuccess: async () => {
+      await refetch();
       toast({ title: "Challenge created" });
       setIsAddingNew(false);
     },
@@ -483,8 +483,8 @@ function WeeklyChallengesManager() {
       const res = await apiRequest("PATCH", `/api/challenges/${id}`, data);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+    onSuccess: async () => {
+      await refetch();
       toast({ title: "Challenge updated" });
       setEditingChallenge(null);
     },
@@ -495,8 +495,8 @@ function WeeklyChallengesManager() {
       const res = await apiRequest("DELETE", `/api/challenges/${id}`);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+    onSuccess: async () => {
+      await refetch();
       toast({ title: "Challenge deleted" });
     },
   });
