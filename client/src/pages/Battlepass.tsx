@@ -105,10 +105,6 @@ export default function Battlepass() {
                 TOTAL CHALLENGES REWARDS: <span className="text-amber-400">5</span>
               </div>
             </div>
-            
-            <div className="flex items-center gap-2 bg-gradient-to-r from-red-900/80 to-red-800/80 px-4 sm:px-6 py-2 sm:py-3 border-2 border-red-600 shadow-lg shadow-red-900/50">
-              <span className="font-tactical text-xl sm:text-3xl text-white tracking-wider">BLOOD & RUST</span>
-            </div>
 
             <div className="flex items-center gap-2 text-amber-400 font-mono text-sm">
               <Clock className="w-4 h-4" />
