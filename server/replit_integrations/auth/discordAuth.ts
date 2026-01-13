@@ -105,7 +105,13 @@ export async function setupDiscordAuth(app: Express) {
   app.get("/api/callback", (req, res, next) => {
     const strategyName = `discord-${req.hostname}`;
     passport.authenticate(strategyName, { failureRedirect: "/" })(req, res, () => {
-      res.redirect("/");
+      // Ensure session is saved before redirect (fixes mobile browsers)
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+        }
+        res.redirect("/");
+      });
     });
   });
 
