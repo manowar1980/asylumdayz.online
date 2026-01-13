@@ -65,7 +65,24 @@ export async function registerRoutes(
   });
 
   app.get(api.battlepass.listLevels.path, async (req, res) => {
-    const levels = await storage.getBattlepassLevels();
+    let levels = await storage.getBattlepassLevels();
+    
+    if (levels.length < 100) {
+      console.log(`Auto-seeding battlepass: found ${levels.length} levels, need 100`);
+      const existingLevelNumbers = new Set(levels.map(l => l.level));
+      for (let i = 1; i <= 100; i++) {
+        if (!existingLevelNumbers.has(i)) {
+          await storage.createBattlepassLevel({
+            level: i,
+            freeReward: `Level ${i} Scrap`,
+            premiumReward: `Level ${i} Tactical Gear`,
+          });
+        }
+      }
+      levels = await storage.getBattlepassLevels();
+      console.log(`Auto-seeding complete: now have ${levels.length} levels`);
+    }
+    
     res.json(levels);
   });
 
@@ -88,6 +105,30 @@ export async function registerRoutes(
     } catch (e: any) {
       console.error("Error updating battlepass level:", e);
       res.status(400).json({ message: e.message || "Invalid input" });
+    }
+  });
+
+  app.post("/api/admin/reseed-levels", requireAdmin, async (req, res) => {
+    try {
+      const existingLevels = await storage.getBattlepassLevels();
+      const existingLevelNumbers = new Set(existingLevels.map(l => l.level));
+      let created = 0;
+      
+      for (let i = 1; i <= 100; i++) {
+        if (!existingLevelNumbers.has(i)) {
+          await storage.createBattlepassLevel({
+            level: i,
+            freeReward: `Level ${i} Scrap`,
+            premiumReward: `Level ${i} Tactical Gear`,
+          });
+          created++;
+        }
+      }
+      
+      res.json({ success: true, message: `Created ${created} new levels. Total should now be 100.` });
+    } catch (e: any) {
+      console.error("Error reseeding levels:", e);
+      res.status(500).json({ message: e.message || "Failed to reseed levels" });
     }
   });
 
