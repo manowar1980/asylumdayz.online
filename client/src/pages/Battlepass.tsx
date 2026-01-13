@@ -16,7 +16,7 @@ export default function Battlepass() {
   const { data: levels, isLoading } = useBattlepassLevels();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = 5;
+  const itemsPerPage = 4;
   const { toast } = useToast();
 
   const [inputBuffer, setInputBuffer] = useState("");
@@ -99,7 +99,7 @@ export default function Battlepass() {
           >
             <div className="flex items-center gap-4">
               <div className="text-xs sm:text-sm font-mono text-amber-400/80 bg-black/50 px-3 py-1 border border-amber-600/30">
-                RANK 1 / 50
+                RANK 1 / 100
               </div>
               <div className="text-xs sm:text-sm font-mono text-gray-400">
                 TOTAL CHALLENGES REWARDS: <span className="text-amber-400">5</span>

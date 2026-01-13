@@ -350,7 +350,7 @@ async function seedDatabase() {
 
   const levels = await storage.getBattlepassLevels();
   if (levels.length === 0) {
-    for (let i = 1; i <= 50; i++) {
+    for (let i = 1; i <= 100; i++) {
       await storage.createBattlepassLevel({
         level: i,
         freeReward: `Level ${i} Scrap`,
