@@ -3,10 +3,13 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+import crypto from "crypto";
 // @ts-ignore
 import DiscordStrategyModule from "passport-discord";
 
 const DiscordStrategy = DiscordStrategyModule.Strategy;
+
+const pendingAuthTokens = new Map<string, { discordId: string; expiresAt: number }>();
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -22,6 +25,7 @@ export function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       httpOnly: true,
       secure: true,
@@ -37,7 +41,6 @@ export async function setupDiscordAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Always set up serialize/deserialize even if Discord OAuth isn't configured
   passport.serializeUser((user: any, cb) => cb(null, user));
   passport.deserializeUser((user: any, cb) => cb(null, user));
 
@@ -47,7 +50,6 @@ export async function setupDiscordAuth(app: Express) {
   if (!clientID || !clientSecret) {
     console.warn("Discord OAuth not configured: missing DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET");
     
-    // Fallback routes when Discord is not configured
     app.get("/api/login", (req, res) => {
       res.status(503).json({ message: "Discord login not configured. Please add DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET." });
     });
@@ -57,7 +59,6 @@ export async function setupDiscordAuth(app: Express) {
     return;
   }
 
-  // Use dynamic callback URL based on request hostname
   const verifyCallback = async (accessToken: string, refreshToken: string, profile: any, done: any) => {
     try {
       const user = await authStorage.upsertUser({
@@ -84,12 +85,10 @@ export async function setupDiscordAuth(app: Express) {
     }
   };
 
-  // Register strategy per-request to use dynamic callback URL
   app.get("/api/login", (req, res, next) => {
     const callbackURL = `https://${req.hostname}/api/callback`;
     const strategyName = `discord-${req.hostname}`;
     
-    // Register strategy if not already registered
     if (!(passport as any)._strategies[strategyName]) {
       passport.use(strategyName, new DiscordStrategy({
         clientID,
@@ -104,13 +103,74 @@ export async function setupDiscordAuth(app: Express) {
 
   app.get("/api/callback", (req, res, next) => {
     const strategyName = `discord-${req.hostname}`;
-    passport.authenticate(strategyName, { failureRedirect: "/" })(req, res, () => {
-      // Ensure session is saved before redirect (fixes mobile browsers)
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
+    passport.authenticate(strategyName, { failureRedirect: "/?auth=failed" })(req, res, () => {
+      const user = req.user as any;
+      
+      if (user && user.discordId) {
+        const token = crypto.randomBytes(32).toString("hex");
+        pendingAuthTokens.set(token, {
+          discordId: user.discordId,
+          expiresAt: Date.now() + 60000
+        });
+        
+        Array.from(pendingAuthTokens.entries()).forEach(([key, value]) => {
+          if (value.expiresAt < Date.now()) {
+            pendingAuthTokens.delete(key);
+          }
+        });
+        
+        req.session.save((err) => {
+          if (err) {
+            console.error("Session save error:", err);
+          }
+          res.redirect(`/?authToken=${token}`);
+        });
+      } else {
+        res.redirect("/?auth=failed");
+      }
+    });
+  });
+
+  app.post("/api/auth/exchange-token", async (req, res) => {
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ message: "Token required" });
+    }
+    
+    const pending = pendingAuthTokens.get(token);
+    if (!pending) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    
+    if (pending.expiresAt < Date.now()) {
+      pendingAuthTokens.delete(token);
+      return res.status(401).json({ message: "Token expired" });
+    }
+    
+    pendingAuthTokens.delete(token);
+    
+    const user = await authStorage.getUser(pending.discordId);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+    
+    req.login({
+      id: user.id,
+      discordId: user.discordId,
+      username: user.discordUsername,
+      email: user.email,
+    }, (err) => {
+      if (err) {
+        console.error("Login error:", err);
+        return res.status(500).json({ message: "Login failed" });
+      }
+      
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error("Session save error:", saveErr);
         }
-        res.redirect("/");
+        res.json({ success: true, user });
       });
     });
   });
