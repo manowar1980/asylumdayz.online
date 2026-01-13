@@ -29,7 +29,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: true,
-      sameSite: "lax",
+      sameSite: "none" as const,
       maxAge: sessionTtl,
     },
   });
@@ -85,12 +85,19 @@ export async function setupDiscordAuth(app: Express) {
     }
   };
 
+  // Store base URL from first request for consistent callbacks
+  let baseUrl: string | null = null;
+  
   app.get("/api/login", (req, res, next) => {
-    const callbackURL = `https://${req.hostname}/api/callback`;
-    const strategyName = `discord-${req.hostname}`;
+    // Use the origin from this request as the canonical base URL
+    if (!baseUrl) {
+      baseUrl = `https://${req.hostname}`;
+    }
+    const callbackURL = `${baseUrl}/api/callback`;
     
-    if (!(passport as any)._strategies[strategyName]) {
-      passport.use(strategyName, new DiscordStrategy({
+    // Register single strategy with consistent callback
+    if (!(passport as any)._strategies["discord"]) {
+      passport.use("discord", new DiscordStrategy({
         clientID,
         clientSecret,
         callbackURL,
@@ -98,12 +105,11 @@ export async function setupDiscordAuth(app: Express) {
       }, verifyCallback));
     }
     
-    passport.authenticate(strategyName)(req, res, next);
+    passport.authenticate("discord")(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    const strategyName = `discord-${req.hostname}`;
-    passport.authenticate(strategyName, { failureRedirect: "/?auth=failed" })(req, res, () => {
+    passport.authenticate("discord", { failureRedirect: "/?auth=failed" })(req, res, () => {
       const user = req.user as any;
       
       if (user && user.discordId) {
