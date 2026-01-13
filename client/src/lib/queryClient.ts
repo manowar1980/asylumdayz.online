@@ -1,5 +1,15 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const AUTH_TOKEN_KEY = "asylum_auth_token";
+
+function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -13,6 +23,7 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   const adminCode = localStorage.getItem("admin_override") === "true" ? "1327" : null;
+  const authToken = getAuthToken();
   const headers: Record<string, string> = {};
   
   if (data) {
@@ -21,6 +32,10 @@ export async function apiRequest(
   
   if (adminCode) {
     headers["x-admin-code"] = adminCode;
+  }
+  
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
   }
 
   const res = await fetch(url, {
@@ -41,21 +56,22 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const adminCode = localStorage.getItem("admin_override") === "true" ? "1327" : null;
+    const authToken = getAuthToken();
     const headers: Record<string, string> = {};
     
     if (adminCode) {
       headers["x-admin-code"] = adminCode;
     }
+    
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
 
     const url = "/" + queryKey.join("/");
-    // Only add headers if they are needed, but ALWAYS include credentials for auth
     const fetchOptions: RequestInit = {
       credentials: "include",
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
     };
-
-    if (headers && Object.keys(headers).length > 0) {
-      fetchOptions.headers = headers;
-    }
 
     const res = await fetch(url, fetchOptions);
 

@@ -1,13 +1,48 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import type { User } from "@shared/models/auth";
 
+const AUTH_TOKEN_KEY = "asylum_auth_token";
+
+function getStoredToken(): string | null {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredToken(token: string): void {
+  try {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } catch {
+    // localStorage might not be available
+  }
+}
+
+function clearStoredToken(): void {
+  try {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 async function fetchUser(): Promise<User | null> {
+  const token = getStoredToken();
+  const headers: Record<string, string> = {};
+  
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const response = await fetch("/api/auth/user", {
     credentials: "include",
+    headers,
   });
 
   if (response.status === 401) {
+    clearStoredToken();
     return null;
   }
 
@@ -18,29 +53,24 @@ async function fetchUser(): Promise<User | null> {
   return response.json();
 }
 
-async function exchangeAuthToken(token: string): Promise<User | null> {
-  const response = await fetch("/api/auth/exchange-token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ token }),
-  });
-
-  if (!response.ok) {
-    return null;
+async function performLogout(): Promise<void> {
+  const token = getStoredToken();
+  
+  if (token) {
+    await fetch("/api/logout", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` },
+      credentials: "include",
+    }).catch(() => {});
   }
-
-  const data = await response.json();
-  return data.user;
-}
-
-async function logout(): Promise<void> {
-  window.location.href = "/api/logout";
+  
+  clearStoredToken();
+  window.location.href = "/";
 }
 
 export function useAuth() {
   const queryClient = useQueryClient();
-  const tokenExchanged = useRef(false);
+  const tokenProcessed = useRef(false);
   
   const { data: user, isLoading, refetch } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
@@ -50,37 +80,29 @@ export function useAuth() {
   });
 
   useEffect(() => {
-    if (tokenExchanged.current) return;
+    if (tokenProcessed.current) return;
     
     const params = new URLSearchParams(window.location.search);
     const authToken = params.get("authToken");
     
     if (authToken) {
-      tokenExchanged.current = true;
-      
+      tokenProcessed.current = true;
+      setStoredToken(authToken);
       window.history.replaceState({}, "", window.location.pathname);
-      
-      exchangeAuthToken(authToken).then((exchangedUser) => {
-        if (exchangedUser) {
-          queryClient.setQueryData(["/api/auth/user"], exchangedUser);
-        }
-        refetch();
-      });
+      refetch();
     }
-  }, [queryClient, refetch]);
+  }, [refetch]);
 
-  const logoutMutation = useMutation({
-    mutationFn: logout,
-    onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/user"], null);
-    },
-  });
+  const logout = () => {
+    queryClient.setQueryData(["/api/auth/user"], null);
+    performLogout();
+  };
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
-    logout: logoutMutation.mutate,
-    isLoggingOut: logoutMutation.isPending,
+    logout,
+    isLoggingOut: false,
   };
 }
