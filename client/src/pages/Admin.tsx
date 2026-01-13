@@ -463,7 +463,11 @@ function WeeklyChallengesManager() {
   const [editingChallenge, setEditingChallenge] = useState<WeeklyChallenge | null>(null);
   
   const { data: challenges, isLoading, refetch } = useQuery<WeeklyChallenge[]>({
-    queryKey: ["/api/challenges"],
+    queryKey: ["challenges"],
+    queryFn: async () => {
+      const res = await fetch("/api/challenges", { credentials: "include" });
+      return res.json();
+    },
   });
 
   const createChallenge = useMutation({

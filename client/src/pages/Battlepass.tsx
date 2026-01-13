@@ -28,7 +28,11 @@ export default function Battlepass() {
   const [showChallenges, setShowChallenges] = useState(false);
   
   const { data: challenges } = useQuery<WeeklyChallenge[]>({
-    queryKey: ["/api/challenges"],
+    queryKey: ["challenges"],
+    queryFn: async () => {
+      const res = await fetch("/api/challenges", { credentials: "include" });
+      return res.json();
+    },
   });
 
   useEffect(() => {
