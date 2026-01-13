@@ -129,17 +129,16 @@ export function Navigation() {
                 </DropdownMenu>
               </div>
             ) : (
-              <a href="/api/login">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="border-red-900 text-red-500 hover:bg-red-950 hover:text-red-400 hover:border-red-500 h-9"
-                  data-testid="button-login"
-                >
-                  <LogIn className="w-4 h-4 mr-2" />
-                  LOGIN
-                </Button>
-              </a>
+              <Button 
+                onClick={() => { window.location.href = "/api/login"; }}
+                variant="outline" 
+                size="sm"
+                className="border-red-900 text-red-500 hover:bg-red-950 hover:text-red-400 hover:border-red-500 h-9"
+                data-testid="button-login"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                LOGIN
+              </Button>
             )}
           </div>
 
@@ -225,16 +224,15 @@ export function Navigation() {
                   </Button>
                 </div>
               ) : (
-                <a href="/api/login" className="block w-full">
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start text-white hover:text-red-400 h-12"
-                    data-testid="button-mobile-login"
-                  >
-                    <LogIn className="w-4 h-4 mr-2" />
-                    LOGIN
-                  </Button>
-                </a>
+                <Button 
+                onClick={() => { window.location.href = "/api/login"; }}
+                variant="ghost" 
+                className="w-full justify-start text-white hover:text-red-400 h-12"
+                data-testid="button-mobile-login"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                LOGIN
+              </Button>
               )}
             </div>
           </div>
