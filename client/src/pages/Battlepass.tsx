@@ -203,6 +203,8 @@ export default function Battlepass() {
                 level={lvl.level}
                 freeReward={lvl.freeReward}
                 premiumReward={lvl.premiumReward}
+                freeImageUrl={lvl.freeImageUrl}
+                premiumImageUrl={lvl.premiumImageUrl}
                 themeColor={themeColor}
               />
             </motion.div>
@@ -228,11 +230,15 @@ function ScoreboardCard({
   level,
   freeReward,
   premiumReward,
+  freeImageUrl,
+  premiumImageUrl,
   themeColor,
 }: {
   level: number;
   freeReward: string;
   premiumReward: string;
+  freeImageUrl?: string | null;
+  premiumImageUrl?: string | null;
   themeColor: "cyan" | "red";
 }) {
   const accentColor = themeColor === "cyan" ? "cyan" : "amber";
@@ -256,9 +262,17 @@ function ScoreboardCard({
           `border-${accentColor}-900/30 bg-gradient-to-b from-${accentColor}-950/20 to-transparent`
         )}>
           <Crown className={cn("w-6 h-6 sm:w-8 sm:h-8 mb-1 sm:mb-2", `text-${accentColor}-500`)} />
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-black/50 rounded border border-white/10 flex items-center justify-center mb-1 sm:mb-2">
-            <Gift className={cn("w-6 h-6 sm:w-8 sm:h-8 opacity-50", `text-${accentColor}-400`)} />
-          </div>
+          {premiumImageUrl ? (
+            <img 
+              src={premiumImageUrl} 
+              alt={premiumReward}
+              className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded border border-white/10 mb-1 sm:mb-2"
+            />
+          ) : (
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-black/50 rounded border border-white/10 flex items-center justify-center mb-1 sm:mb-2">
+              <Gift className={cn("w-6 h-6 sm:w-8 sm:h-8 opacity-50", `text-${accentColor}-400`)} />
+            </div>
+          )}
           <p className={cn("text-center text-xs font-display uppercase leading-tight line-clamp-2", `text-${accentColor}-200`)}>
             {premiumReward}
           </p>
@@ -270,9 +284,17 @@ function ScoreboardCard({
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center p-2 bg-black/20 relative">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-black/50 rounded border border-white/10 flex items-center justify-center mb-1 sm:mb-2">
-            <Gift className="w-4 h-4 sm:w-6 sm:h-6 text-gray-500" />
-          </div>
+          {freeImageUrl ? (
+            <img 
+              src={freeImageUrl} 
+              alt={freeReward}
+              className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded border border-white/10 mb-1 sm:mb-2"
+            />
+          ) : (
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-black/50 rounded border border-white/10 flex items-center justify-center mb-1 sm:mb-2">
+              <Gift className="w-4 h-4 sm:w-6 sm:h-6 text-gray-500" />
+            </div>
+          )}
           <p className="text-center text-xs text-gray-400 font-display uppercase leading-tight line-clamp-2">
             {freeReward}
           </p>

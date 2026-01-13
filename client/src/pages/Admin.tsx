@@ -239,27 +239,33 @@ function SeasonConfigForm({ initialData }: { initialData?: any }) {
 
 function LevelEditorRow({ level }: { level: any }) {
   const [open, setOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(level.imageUrl || null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingFree, setUploadingFree] = useState(false);
+  const [uploadingPremium, setUploadingPremium] = useState(false);
+  const [freeImagePreview, setFreeImagePreview] = useState<string | null>(level.freeImageUrl || null);
+  const [premiumImagePreview, setPremiumImagePreview] = useState<string | null>(level.premiumImageUrl || null);
+  const freeFileInputRef = useRef<HTMLInputElement>(null);
+  const premiumFileInputRef = useRef<HTMLInputElement>(null);
   const updateLevel = useUpdateLevel();
   const { toast } = useToast();
 
-  const formSchema = insertBattlepassLevelSchema.pick({ freeReward: true, premiumReward: true, imageUrl: true });
+  const formSchema = insertBattlepassLevelSchema.pick({ freeReward: true, premiumReward: true, freeImageUrl: true, premiumImageUrl: true });
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       freeReward: level.freeReward,
       premiumReward: level.premiumReward,
-      imageUrl: level.imageUrl || ""
+      freeImageUrl: level.freeImageUrl || "",
+      premiumImageUrl: level.premiumImageUrl || ""
     }
   });
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "free" | "premium") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploading(true);
+    if (type === "free") setUploadingFree(true);
+    else setUploadingPremium(true);
+
     const formData = new FormData();
     formData.append("image", file);
 
@@ -275,21 +281,31 @@ function LevelEditorRow({ level }: { level: any }) {
       if (!res.ok) throw new Error("Upload failed");
       
       const data = await res.json();
-      form.setValue("imageUrl", data.imageUrl);
-      setImagePreview(data.imageUrl);
+      if (type === "free") {
+        form.setValue("freeImageUrl", data.imageUrl);
+        setFreeImagePreview(data.imageUrl);
+      } else {
+        form.setValue("premiumImageUrl", data.imageUrl);
+        setPremiumImagePreview(data.imageUrl);
+      }
       toast({ title: "Image uploaded successfully" });
     } catch (error) {
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
-      setUploading(false);
+      if (type === "free") setUploadingFree(false);
+      else setUploadingPremium(false);
     }
   };
 
-  const clearImage = () => {
-    form.setValue("imageUrl", "");
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const clearImage = (type: "free" | "premium") => {
+    if (type === "free") {
+      form.setValue("freeImageUrl", "");
+      setFreeImagePreview(null);
+      if (freeFileInputRef.current) freeFileInputRef.current.value = "";
+    } else {
+      form.setValue("premiumImageUrl", "");
+      setPremiumImagePreview(null);
+      if (premiumFileInputRef.current) premiumFileInputRef.current.value = "";
     }
   };
 
@@ -318,7 +334,7 @@ function LevelEditorRow({ level }: { level: any }) {
             <Edit className="w-4 h-4 mr-2" /> EDIT
           </Button>
         </DialogTrigger>
-        <DialogContent className="bg-gray-900 border-white/10 text-white max-w-md mx-4">
+        <DialogContent className="bg-gray-900 border-white/10 text-white max-w-md mx-4 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-tactical">EDIT LEVEL {level.level}</DialogTitle>
           </DialogHeader>
@@ -328,32 +344,29 @@ function LevelEditorRow({ level }: { level: any }) {
               <Label className="text-sm">Free Reward</Label>
               <Input {...form.register("freeReward")} className="bg-black/50 border-white/20 h-10 sm:h-12" />
             </div>
+            
             <div className="space-y-2">
-              <Label className="text-blue-400 text-sm">Premium Reward</Label>
-              <Input {...form.register("premiumReward")} className="bg-black/50 border-blue-900/50 focus:border-blue-500 h-10 sm:h-12" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">Reward Image</Label>
+              <Label className="text-gray-400 text-sm">Free Tier Image</Label>
               <input
                 type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
+                ref={freeFileInputRef}
+                onChange={(e) => handleImageUpload(e, "free")}
                 accept="image/*"
                 className="hidden"
-                data-testid={`input-image-upload-${level.level}`}
+                data-testid={`input-free-image-upload-${level.level}`}
               />
-              {imagePreview ? (
+              {freeImagePreview ? (
                 <div className="relative inline-block">
                   <img 
-                    src={imagePreview} 
-                    alt="Preview" 
-                    className="h-20 rounded object-cover border border-white/20"
+                    src={freeImagePreview} 
+                    alt="Free Preview" 
+                    className="h-16 rounded object-cover border border-gray-500"
                   />
                   <button
                     type="button"
-                    onClick={clearImage}
+                    onClick={() => clearImage("free")}
                     className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                    data-testid={`button-remove-image-${level.level}`}
+                    data-testid={`button-remove-free-image-${level.level}`}
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -362,21 +375,72 @@ function LevelEditorRow({ level }: { level: any }) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="w-full bg-black/50 border-white/20 text-gray-400 hover:text-white h-10 sm:h-12"
-                  data-testid={`button-upload-image-${level.level}`}
+                  onClick={() => freeFileInputRef.current?.click()}
+                  disabled={uploadingFree}
+                  className="w-full bg-black/50 border-gray-600 text-gray-400 hover:text-white h-10"
+                  data-testid={`button-upload-free-image-${level.level}`}
                 >
-                  {uploading ? (
+                  {uploadingFree ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
                     <ImagePlus className="w-4 h-4 mr-2" />
                   )}
-                  {uploading ? "UPLOADING..." : "UPLOAD IMAGE"}
+                  {uploadingFree ? "UPLOADING..." : "UPLOAD FREE IMAGE"}
                 </Button>
               )}
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 h-10 sm:h-12" disabled={updateLevel.isPending || uploading}>
+
+            <div className="space-y-2">
+              <Label className="text-blue-400 text-sm">Premium Reward</Label>
+              <Input {...form.register("premiumReward")} className="bg-black/50 border-blue-900/50 focus:border-blue-500 h-10 sm:h-12" />
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-blue-400 text-sm">Premium Tier Image</Label>
+              <input
+                type="file"
+                ref={premiumFileInputRef}
+                onChange={(e) => handleImageUpload(e, "premium")}
+                accept="image/*"
+                className="hidden"
+                data-testid={`input-premium-image-upload-${level.level}`}
+              />
+              {premiumImagePreview ? (
+                <div className="relative inline-block">
+                  <img 
+                    src={premiumImagePreview} 
+                    alt="Premium Preview" 
+                    className="h-16 rounded object-cover border border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => clearImage("premium")}
+                    className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                    data-testid={`button-remove-premium-image-${level.level}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => premiumFileInputRef.current?.click()}
+                  disabled={uploadingPremium}
+                  className="w-full bg-black/50 border-blue-900/50 text-blue-400 hover:text-white h-10"
+                  data-testid={`button-upload-premium-image-${level.level}`}
+                >
+                  {uploadingPremium ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <ImagePlus className="w-4 h-4 mr-2" />
+                  )}
+                  {uploadingPremium ? "UPLOADING..." : "UPLOAD PREMIUM IMAGE"}
+                </Button>
+              )}
+            </div>
+
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 h-10 sm:h-12" disabled={updateLevel.isPending || uploadingFree || uploadingPremium}>
               {updateLevel.isPending ? "SAVING..." : "SAVE CHANGES"}
             </Button>
           </form>

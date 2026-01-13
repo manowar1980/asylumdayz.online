@@ -26,6 +26,8 @@ export const battlepassLevels = pgTable("battlepass_levels", {
   freeReward: text("free_reward").notNull(),
   premiumReward: text("premium_reward").notNull(),
   imageUrl: text("image_url"),
+  freeImageUrl: text("free_image_url"),
+  premiumImageUrl: text("premium_image_url"),
 });
 
 export const insertServerSchema = createInsertSchema(servers);
