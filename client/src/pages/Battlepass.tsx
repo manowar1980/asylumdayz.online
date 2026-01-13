@@ -1,19 +1,339 @@
 import { Navigation } from "@/components/Navigation";
 import { useBattlepassConfig, useBattlepassLevels } from "@/hooks/use-battlepass";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal, Target, Star, X, CheckCircle, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal, Target, Star, CheckCircle, Loader2, Zap, Shield, Sparkles } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { WeeklyChallenge, UserChallengeProgress } from "@shared/schema";
-import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/use-auth";
+
+const SOUND_EFFECTS = {
+  unlock: "/sounds/unlock.mp3",
+  xpGain: "/sounds/xp.mp3",
+  levelUp: "/sounds/levelup.mp3",
+  click: "/sounds/click.mp3",
+};
+
+function playSound(sound: keyof typeof SOUND_EFFECTS, volume = 0.3) {
+  try {
+    const audio = new Audio();
+    audio.volume = volume;
+    
+    if (sound === "unlock") {
+      audio.src = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleVErXp7h7K1pNCJMpezoq2pEL1Om5+WmaF1FN5Xd4pxrZ1hDh8/ZlG9wWUd8ws+MeHRYSXa+y4h6d1hKcrrIhH15WEtutsV/gHpYS2yzwnyDe1hLaqzAeYZ9WEtop718iH5YS2Wlunp+P15cdqK3dYF/W0lpobN0hIBbSmaksHGHf1xLY6Cub4qAXEtioqttjH9dS2ChqWuOfWBLX6GnaaB/YEthoqurln5hS2KjratffGJLY6WuqGJ8Yktkpq+lZHxjS2WnsKJne2RLZ6ixn2p5ZEtpqbKcbHdkS2qqtJlvcGVLbKy1lnFtZUturbaPdGllS2+utox3ZmZLcLC3iXljZ0txsbmGeGNoS3KyuoN6YmlLc7S7gHxfaktztb1+fV9rS3S2vnx/XmxLdbfAfYFeblZ2uMB7g11vVXe5wXqFXHBVeLrCeIdccFV5u8N3iVtwVXq8xHaLWnBVerrUepRVclp3t9N4mU1zXXS12HyeSHRfc7LdfKJCdWJyrd59pz12ZHCo4H6sPnhmbKXhf7A7eWhpo+GBszhwaGei4oO1NXBqZaHjhbgycmtjn+OHujBzbGKe5Im8LXRtYZ3kiL0rdW5gnOWJvih2b1+a5Iq+JndwXpnlir8keHFemuWLwCF4cl6Z5oy/H3lzXZjmi8Ack3Nem+eNwh2VdF6c54zCG5V1XZvnjMIalXZdm+eMwhqVdl2b54zCGpV2XZvnjMIalXZdm+eMwhqVdl2b54zCGpV2XZvn";
+    } else if (sound === "xpGain") {
+      audio.src = "data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTs";
+    } else if (sound === "levelUp") {
+      audio.src = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleVErXp7h7K1pNCJMpezoq2pEL1Om5+WmaF1FN5Xd4pxrZ1hDh8/ZlG9wWUd8ws+MeHRYSXa+y4h6d1hKcrrIhH15WEtutsV/gHpYS2yzwnyDe1hLaqzAeYZ9WEtop718iH5YS2Wlunp+P15cdqK3dYF/W0lpobN0hIBbSmaksHGHf1xLY6Cub4qAXEtioqttjH9dS2ChqWuOfWBLX6GnaaB/YEthoqurln5hS2KjratffGJLY6WuqGJ8Yktkpq+lZHxjS2WnsKJne2RLZ6ixn2p5ZEtpqbKcbHdkS2qqtJlvcGVLbKy1lnFtZUturbaPdGllS2+utox3ZmZLcLC3iXljZ0txsbmGeGNoS3KyuoN6YmlLc7S7gHxfaktztb1+fV9rS3S2vnx/XmxLdbfAfYFeblZ2uMB7g11vVXe5wXqFXHBVeLrCeIdccFV5u8N3iVtwVXq8xHaLWnBVerrUepRVclp3t9N4mU1zXXS12HyeSHRfc7LdfKJCdWJyrd59pz12ZHCo4H6sPnhmbKXhf7A7eWhpo+GBszhwaGei4oO1NXBqZaHjhbgycmtjn+OHujBzbGKe5Im8LXRtYZ3kiL0rdW5gnOWJvih2b1+a5Iq+JndwXpnlir8keHFemuWLwCF4cl6Z5oy/H3lzXZjmi8Ack3Nem+eNwh2VdF6c54zCG5V1XZvnjMIalXZdm+eMwhqVdl2b54zCGpV2XZvnjMIalXZdm+eMwhqVdl2b54zCGpV2XZvn";
+    } else {
+      audio.src = "data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTs";
+    }
+    
+    audio.play().catch(() => {});
+  } catch {
+    // Audio might not be available
+  }
+}
+
+function AnimatedXPBar({ 
+  currentXP, 
+  maxXP, 
+  level,
+  themeColor 
+}: { 
+  currentXP: number; 
+  maxXP: number; 
+  level: number;
+  themeColor: "cyan" | "red";
+}) {
+  const [displayXP, setDisplayXP] = useState(currentXP);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const prevXP = useRef(currentXP);
+  
+  useEffect(() => {
+    if (currentXP !== prevXP.current) {
+      setIsAnimating(true);
+      playSound("xpGain", 0.2);
+      
+      const diff = currentXP - prevXP.current;
+      const steps = 30;
+      const stepValue = diff / steps;
+      let step = 0;
+      
+      const interval = setInterval(() => {
+        step++;
+        setDisplayXP(prev => Math.min(prev + stepValue, currentXP));
+        if (step >= steps) {
+          clearInterval(interval);
+          setDisplayXP(currentXP);
+          setIsAnimating(false);
+        }
+      }, 30);
+      
+      prevXP.current = currentXP;
+      return () => clearInterval(interval);
+    }
+  }, [currentXP]);
+  
+  const percentage = Math.min((displayXP / maxXP) * 100, 100);
+  const accentColor = themeColor === "cyan" ? "cyan" : "amber";
+  
+  return (
+    <div className="relative w-full">
+      <div className="flex items-center justify-between mb-2 text-xs font-mono">
+        <div className="flex items-center gap-2">
+          <motion.div
+            animate={isAnimating ? { scale: [1, 1.2, 1] } : {}}
+            transition={{ duration: 0.3 }}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded",
+              accentColor === "cyan" ? "bg-cyan-900/30 text-cyan-400" : "bg-amber-900/30 text-amber-400"
+            )}
+          >
+            <Shield className="w-3 h-3" />
+            <span>RANK {level}</span>
+          </motion.div>
+        </div>
+        <motion.span
+          animate={isAnimating ? { scale: [1, 1.1, 1], color: ["#fff", accentColor === "cyan" ? "#22d3ee" : "#fbbf24", "#fff"] } : {}}
+          className="text-gray-400"
+        >
+          {Math.floor(displayXP)} / {maxXP} XP
+        </motion.span>
+      </div>
+      
+      <div className="relative h-6 bg-black/60 border border-gray-700 rounded overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+        
+        <motion.div
+          className={cn(
+            "absolute inset-y-0 left-0 rounded-r",
+            accentColor === "cyan" 
+              ? "bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400"
+              : "bg-gradient-to-r from-amber-600 via-amber-500 to-amber-400"
+          )}
+          initial={{ width: 0 }}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent" />
+          
+          {isAnimating && (
+            <motion.div
+              className="absolute inset-0 bg-white/30"
+              animate={{ opacity: [0.5, 0, 0.5] }}
+              transition={{ duration: 0.3, repeat: 3 }}
+            />
+          )}
+          
+          <motion.div
+            className="absolute right-0 top-0 bottom-0 w-2 bg-white/50 blur-sm"
+            animate={isAnimating ? { opacity: [0.8, 0.3, 0.8] } : { opacity: 0.3 }}
+          />
+        </motion.div>
+        
+        <div className="absolute inset-0 flex items-center justify-center">
+          <AnimatePresence>
+            {isAnimating && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                className="flex items-center gap-1 text-white font-bold text-xs drop-shadow-lg"
+              >
+                <Zap className="w-3 h-3" />
+                +XP
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(10)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute top-0 bottom-0 w-px bg-gray-600/30"
+              style={{ left: `${(i + 1) * 10}%` }}
+            />
+          ))}
+        </div>
+      </div>
+      
+      <div className="flex justify-between mt-1 text-xs text-gray-600 font-mono">
+        <span>0</span>
+        <span>{maxXP}</span>
+      </div>
+    </div>
+  );
+}
+
+function RewardUnlockAnimation({ 
+  isVisible, 
+  rewardName, 
+  xpAmount,
+  onComplete 
+}: { 
+  isVisible: boolean; 
+  rewardName: string;
+  xpAmount: number;
+  onComplete: () => void;
+}) {
+  useEffect(() => {
+    if (isVisible) {
+      playSound("unlock", 0.4);
+      const timer = setTimeout(onComplete, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, onComplete]);
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={onComplete}
+        >
+          <motion.div
+            initial={{ scale: 0, rotateY: -180 }}
+            animate={{ scale: 1, rotateY: 0 }}
+            exit={{ scale: 0, rotateY: 180 }}
+            transition={{ type: "spring", damping: 15, stiffness: 100 }}
+            className="relative"
+          >
+            <motion.div
+              className="absolute inset-0 bg-amber-500/30 blur-3xl rounded-full"
+              animate={{ 
+                scale: [1, 1.5, 1],
+                opacity: [0.5, 0.8, 0.5]
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+            
+            <div className="relative bg-gradient-to-b from-zinc-800 to-zinc-900 border-2 border-amber-500 p-8 rounded-lg">
+              <motion.div
+                className="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-600 px-4 py-1 rounded font-tactical text-black text-sm"
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                REWARD UNLOCKED
+              </motion.div>
+              
+              <div className="flex flex-col items-center gap-4 pt-4">
+                <motion.div
+                  animate={{ 
+                    rotateY: [0, 360],
+                    scale: [1, 1.1, 1]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="w-24 h-24 bg-gradient-to-br from-amber-600 to-amber-800 rounded-lg flex items-center justify-center border-2 border-amber-400"
+                >
+                  <Gift className="w-12 h-12 text-amber-200" />
+                </motion.div>
+                
+                <motion.h3
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-amber-400 font-tactical text-xl text-center max-w-xs"
+                >
+                  {rewardName}
+                </motion.h3>
+                
+                <motion.div
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5, type: "spring" }}
+                  className="flex items-center gap-2 bg-amber-900/50 px-4 py-2 rounded-full"
+                >
+                  <Star className="w-4 h-4 text-amber-400" />
+                  <span className="text-amber-300 font-mono">+{xpAmount} XP</span>
+                </motion.div>
+              </div>
+              
+              {[...Array(12)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-2 h-2 bg-amber-400 rounded-full"
+                  initial={{ 
+                    x: 0, 
+                    y: 0, 
+                    opacity: 1 
+                  }}
+                  animate={{ 
+                    x: Math.cos(i * 30 * Math.PI / 180) * 150,
+                    y: Math.sin(i * 30 * Math.PI / 180) * 150,
+                    opacity: 0,
+                    scale: 0
+                  }}
+                  transition={{ 
+                    duration: 1.5, 
+                    repeat: Infinity,
+                    delay: i * 0.1
+                  }}
+                  style={{
+                    left: "50%",
+                    top: "50%",
+                  }}
+                />
+              ))}
+            </div>
+            
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+              className="text-center text-gray-500 text-sm mt-4 font-mono"
+            >
+              TAP TO CONTINUE
+            </motion.p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function AnimatedProgressBar({ value, isClaimed }: { value: number; isClaimed: boolean }) {
+  return (
+    <div className="relative h-2 bg-black/50 rounded overflow-hidden">
+      <motion.div
+        className={cn(
+          "absolute inset-y-0 left-0 rounded",
+          isClaimed 
+            ? "bg-gradient-to-r from-green-600 to-green-400" 
+            : "bg-gradient-to-r from-amber-600 to-amber-400"
+        )}
+        initial={{ width: 0 }}
+        animate={{ width: `${value}%` }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+      >
+        {!isClaimed && value > 0 && value < 100 && (
+          <motion.div
+            className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-white/50"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
+        )}
+      </motion.div>
+      
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+        animate={{ x: ["-100%", "100%"] }}
+        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+      />
+    </div>
+  );
+}
 
 export default function Battlepass() {
   const { data: config } = useBattlepassConfig();
@@ -28,6 +348,12 @@ export default function Battlepass() {
   const [secretCode, setSecretCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
+  const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+  const [unlockedReward, setUnlockedReward] = useState({ name: "", xp: 0 });
+  
+  const [userXP, setUserXP] = useState(450);
+  const [userLevel, setUserLevel] = useState(5);
+  const maxXPPerLevel = 1000;
   
   const { user } = useAuth();
   
@@ -54,11 +380,25 @@ export default function Battlepass() {
       const res = await apiRequest("POST", `/api/challenges/${challengeId}/claim`, {});
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: "Reward Claimed!", description: "XP has been added to your account." });
+    onSuccess: (_, challengeId) => {
+      const challenge = challenges?.find(c => c.id === challengeId);
+      if (challenge) {
+        setUnlockedReward({ name: challenge.title, xp: challenge.xpReward });
+        setShowRewardAnimation(true);
+        
+        setUserXP(prev => {
+          const newXP = prev + challenge.xpReward;
+          if (newXP >= maxXPPerLevel) {
+            setUserLevel(l => l + 1);
+            playSound("levelUp", 0.5);
+            return newXP - maxXPPerLevel;
+          }
+          return newXP;
+        });
+      }
       refetchProgress();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({ title: "Cannot Claim", description: error.message || "Requirements not met", variant: "destructive" });
     },
   });
@@ -104,7 +444,7 @@ export default function Battlepass() {
       } else {
         toast({ title: "Access Denied", description: "Invalid secret code.", variant: "destructive" });
       }
-    } catch (err) {
+    } catch {
       toast({ title: "Error", description: "Verification failed.", variant: "destructive" });
     } finally {
       setIsVerifying(false);
@@ -115,10 +455,12 @@ export default function Battlepass() {
   const themeColor = config?.themeColor === "tech-blue" ? "cyan" : "red";
 
   const scrollLeft = () => {
+    playSound("click", 0.1);
     if (currentPage > 0) setCurrentPage(currentPage - 1);
   };
 
   const scrollRight = () => {
+    playSound("click", 0.1);
     if (levels && currentPage < Math.ceil(levels.length / itemsPerPage) - 1) {
       setCurrentPage(currentPage + 1);
     }
@@ -126,9 +468,20 @@ export default function Battlepass() {
 
   const visibleLevels = levels?.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage) || [];
 
+  const handleCloseRewardAnimation = useCallback(() => {
+    setShowRewardAnimation(false);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-900 via-black to-zinc-900 font-sans">
       <Navigation />
+      
+      <RewardUnlockAnimation
+        isVisible={showRewardAnimation}
+        rewardName={unlockedReward.name}
+        xpAmount={unlockedReward.xp}
+        onComplete={handleCloseRewardAnimation}
+      />
 
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-amber-900/20 via-yellow-600/10 to-amber-900/20" />
@@ -138,20 +491,39 @@ export default function Battlepass() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col sm:flex-row items-center justify-between gap-4"
+            className="space-y-4"
           >
-            <div className="flex items-center gap-4">
-              <div className="text-xs sm:text-sm font-mono text-amber-400/80 bg-black/50 px-3 py-1 border border-amber-600/30">
-                RANK 1 / 100
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <motion.div 
+                  className="text-xs sm:text-sm font-mono text-amber-400/80 bg-black/50 px-3 py-1 border border-amber-600/30"
+                  animate={{ borderColor: ["rgba(217,119,6,0.3)", "rgba(217,119,6,0.6)", "rgba(217,119,6,0.3)"] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  RANK {userLevel} / 100
+                </motion.div>
+                <div className="text-xs sm:text-sm font-mono text-gray-400">
+                  TOTAL CHALLENGES REWARDS: <span className="text-amber-400">5</span>
+                </div>
               </div>
-              <div className="text-xs sm:text-sm font-mono text-gray-400">
-                TOTAL CHALLENGES REWARDS: <span className="text-amber-400">5</span>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-2 text-amber-400 font-mono text-sm">
-              <Clock className="w-4 h-4" />
-              <span>{config?.daysLeft || 25} DAYS LEFT</span>
+              <motion.div 
+                className="flex items-center gap-2 text-amber-400 font-mono text-sm"
+                animate={{ opacity: [1, 0.7, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <Clock className="w-4 h-4" />
+                <span>{config?.daysLeft || 25} DAYS LEFT</span>
+              </motion.div>
+            </div>
+            
+            <div className="max-w-xl mx-auto sm:mx-0">
+              <AnimatedXPBar 
+                currentXP={userXP} 
+                maxXP={maxXPPerLevel} 
+                level={userLevel}
+                themeColor={themeColor}
+              />
             </div>
           </motion.div>
         </div>
@@ -187,12 +559,22 @@ export default function Battlepass() {
       </Dialog>
 
       <div className="text-center py-6 sm:py-8 border-b border-amber-900/30">
-        <h1 className={cn(
-          "text-4xl sm:text-6xl md:text-7xl font-tactical tracking-wider",
-          themeColor === "cyan" ? "text-cyan-400" : "text-amber-400"
-        )}>
+        <motion.h1 
+          className={cn(
+            "text-4xl sm:text-6xl md:text-7xl font-tactical tracking-wider",
+            themeColor === "cyan" ? "text-cyan-400" : "text-amber-400"
+          )}
+          animate={{ 
+            textShadow: [
+              "0 0 20px rgba(251,191,36,0.3)",
+              "0 0 40px rgba(251,191,36,0.5)",
+              "0 0 20px rgba(251,191,36,0.3)"
+            ]
+          }}
+          transition={{ duration: 3, repeat: Infinity }}
+        >
           {config?.seasonName || "GENESIS"}
-        </h1>
+        </motion.h1>
         <p className="text-gray-500 font-mono text-sm mt-2">SEASON 01 • SCOREBOARD</p>
       </div>
 
@@ -236,7 +618,7 @@ export default function Battlepass() {
               key={lvl.id}
               initial={{ opacity: 0, scale: 0.9, rotateY: -10 }}
               animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-              transition={{ delay: idx * 0.1 }}
+              transition={{ delay: idx * 0.1, type: "spring", damping: 20 }}
             >
               <ScoreboardCard
                 level={lvl.level}
@@ -245,6 +627,7 @@ export default function Battlepass() {
                 freeImageUrl={lvl.freeImageUrl}
                 premiumImageUrl={lvl.premiumImageUrl}
                 themeColor={themeColor}
+                userLevel={userLevel}
               />
             </motion.div>
           ))}
@@ -252,20 +635,28 @@ export default function Battlepass() {
 
         <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-2 sm:gap-4 text-xs font-mono border-t border-amber-900/30 pt-6">
           {["CLAIM", "RANK UP", "TUTORIAL", "S.C.O.R.E"].map((item) => (
-            <div
+            <motion.div
               key={item}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               className="px-3 sm:px-4 py-2 bg-black/50 border border-amber-900/50 text-amber-500 hover:bg-amber-900/20 cursor-pointer transition-colors"
+              onClick={() => playSound("click", 0.1)}
             >
               {item}
-            </div>
+            </motion.div>
           ))}
-          <div
-            onClick={() => setShowChallenges(true)}
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              playSound("click", 0.1);
+              setShowChallenges(true);
+            }}
             className="px-3 sm:px-4 py-2 bg-black/50 border border-amber-900/50 text-amber-500 hover:bg-amber-900/20 cursor-pointer transition-colors"
             data-testid="button-show-challenges"
           >
             CHALLENGES
-          </div>
+          </motion.div>
         </div>
 
         <Dialog open={showChallenges} onOpenChange={setShowChallenges}>
@@ -281,7 +672,7 @@ export default function Battlepass() {
             </DialogHeader>
             <div className="space-y-3 max-h-[60vh] overflow-y-auto">
               {challenges && challenges.length > 0 ? (
-                challenges.filter(c => c.isActive).map((challenge) => {
+                challenges.filter(c => c.isActive).map((challenge, index) => {
                   const progress = getProgressForChallenge(challenge.id);
                   const currentProgress = progress?.progress || 0;
                   const targetCount = challenge.targetCount || 1;
@@ -290,8 +681,11 @@ export default function Battlepass() {
                   const progressPercent = Math.min((currentProgress / targetCount) * 100, 100);
 
                   return (
-                    <div
+                    <motion.div
                       key={challenge.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
                       data-testid={`challenge-card-${challenge.id}`}
                       className={cn(
                         "p-4 bg-black/50 border rounded transition-all",
@@ -309,7 +703,13 @@ export default function Battlepass() {
                               {challenge.title}
                             </h3>
                             {isClaimed && (
-                              <CheckCircle className="w-4 h-4 text-green-500" />
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring" }}
+                              >
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                              </motion.div>
                             )}
                           </div>
                           <p className="text-gray-400 text-xs mt-1">
@@ -327,44 +727,47 @@ export default function Battlepass() {
                                   {currentProgress}/{targetCount}
                                 </span>
                               </div>
-                              <Progress 
-                                value={progressPercent} 
-                                className={cn(
-                                  "h-2",
-                                  isClaimed ? "[&>div]:bg-green-500" : "[&>div]:bg-amber-500"
-                                )}
-                              />
+                              <AnimatedProgressBar value={progressPercent} isClaimed={isClaimed} />
                             </div>
                           )}
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <div className="flex items-center gap-1 text-amber-500 bg-amber-900/20 px-2 py-1 rounded">
-                            <Star className="w-3 h-3" />
+                          <motion.div 
+                            className="flex items-center gap-1 text-amber-500 bg-amber-900/20 px-2 py-1 rounded"
+                            animate={canClaim ? { scale: [1, 1.05, 1] } : {}}
+                            transition={{ duration: 1, repeat: canClaim ? Infinity : 0 }}
+                          >
+                            <Sparkles className="w-3 h-3" />
                             <span className="text-xs font-mono">{challenge.xpReward} XP</span>
-                          </div>
+                          </motion.div>
                           
                           {user && (
                             isClaimed ? (
                               <span className="text-xs text-green-400 font-mono">CLAIMED</span>
                             ) : canClaim ? (
-                              <Button
-                                size="sm"
-                                data-testid={`claim-button-${challenge.id}`}
-                                className="bg-amber-600 hover:bg-amber-500 text-black text-xs h-7"
-                                onClick={() => claimMutation.mutate(challenge.id)}
-                                disabled={claimMutation.isPending}
+                              <motion.div
+                                animate={{ scale: [1, 1.05, 1] }}
+                                transition={{ duration: 0.5, repeat: Infinity }}
                               >
-                                {claimMutation.isPending ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  "CLAIM"
-                                )}
-                              </Button>
+                                <Button
+                                  size="sm"
+                                  data-testid={`claim-button-${challenge.id}`}
+                                  className="bg-amber-600 hover:bg-amber-500 text-black text-xs h-7"
+                                  onClick={() => claimMutation.mutate(challenge.id)}
+                                  disabled={claimMutation.isPending}
+                                >
+                                  {claimMutation.isPending ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    "CLAIM"
+                                  )}
+                                </Button>
+                              </motion.div>
                             ) : null
                           )}
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })
               ) : (
@@ -388,6 +791,7 @@ function ScoreboardCard({
   freeImageUrl,
   premiumImageUrl,
   themeColor,
+  userLevel,
 }: {
   level: number;
   freeReward: string;
@@ -395,28 +799,66 @@ function ScoreboardCard({
   freeImageUrl?: string | null;
   premiumImageUrl?: string | null;
   themeColor: "cyan" | "red";
+  userLevel: number;
 }) {
   const accentColor = themeColor === "cyan" ? "cyan" : "amber";
-  const isLocked = level > 1;
+  const isLocked = level > userLevel;
+  const isUnlocked = level <= userLevel;
+  const isCurrent = level === userLevel;
 
   return (
-    <div className={cn(
-      "relative aspect-[3/4] bg-gradient-to-b from-zinc-800 to-zinc-900 border-2 overflow-hidden group transition-all duration-300 hover:scale-105",
-      `border-${accentColor}-900/50 hover:border-${accentColor}-500`
-    )}>
+    <motion.div 
+      className={cn(
+        "relative aspect-[3/4] bg-gradient-to-b from-zinc-800 to-zinc-900 border-2 overflow-hidden group transition-all duration-300",
+        isLocked 
+          ? "border-gray-700/50 opacity-60" 
+          : isCurrent
+          ? `border-${accentColor}-400 shadow-lg shadow-${accentColor}-500/20`
+          : `border-${accentColor}-900/50 hover:border-${accentColor}-500`
+      )}
+      whileHover={!isLocked ? { scale: 1.05, y: -5 } : {}}
+      whileTap={!isLocked ? { scale: 0.98 } : {}}
+    >
+      {isCurrent && (
+        <motion.div
+          className={cn(
+            "absolute inset-0 pointer-events-none",
+            `shadow-[inset_0_0_30px_rgba(var(--${accentColor}-glow),0.3)]`
+          )}
+          animate={{ opacity: [0.3, 0.6, 0.3] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+      )}
+      
       <div className={cn(
         "absolute top-0 left-0 right-0 py-1 sm:py-2 text-center font-tactical text-lg sm:text-xl border-b",
-        `bg-${accentColor}-900/30 border-${accentColor}-700/50 text-${accentColor}-400`
+        isLocked 
+          ? "bg-gray-800/30 border-gray-700/50 text-gray-500"
+          : `bg-${accentColor}-900/30 border-${accentColor}-700/50 text-${accentColor}-400`
       )}>
         {level}
+        {isUnlocked && !isCurrent && (
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute right-1 top-1/2 -translate-y-1/2"
+          >
+            <CheckCircle className="w-3 h-3 text-green-500" />
+          </motion.span>
+        )}
       </div>
 
       <div className="absolute inset-0 top-8 sm:top-10 flex flex-col">
         <div className={cn(
           "flex-1 flex flex-col items-center justify-center p-2 border-b relative",
-          `border-${accentColor}-900/30 bg-gradient-to-b from-${accentColor}-950/20 to-transparent`
+          isLocked 
+            ? "border-gray-700/30 bg-gradient-to-b from-gray-800/20 to-transparent"
+            : `border-${accentColor}-900/30 bg-gradient-to-b from-${accentColor}-950/20 to-transparent`
         )}>
-          <Crown className={cn("w-6 h-6 sm:w-8 sm:h-8 mb-1 sm:mb-2", `text-${accentColor}-500`)} />
+          <Crown className={cn(
+            "w-6 h-6 sm:w-8 sm:h-8 mb-1 sm:mb-2", 
+            isLocked ? "text-gray-600" : `text-${accentColor}-500`
+          )} />
           {premiumImageUrl ? (
             <img 
               src={premiumImageUrl} 
@@ -425,16 +867,26 @@ function ScoreboardCard({
             />
           ) : (
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-black/50 rounded border border-white/10 flex items-center justify-center mb-1 sm:mb-2">
-              <Gift className={cn("w-6 h-6 sm:w-8 sm:h-8 opacity-50", `text-${accentColor}-400`)} />
+              <Gift className={cn(
+                "w-6 h-6 sm:w-8 sm:h-8 opacity-50", 
+                isLocked ? "text-gray-500" : `text-${accentColor}-400`
+              )} />
             </div>
           )}
-          <p className={cn("text-center text-xs font-display uppercase leading-tight line-clamp-2", `text-${accentColor}-200`)}>
+          <p className={cn(
+            "text-center text-xs font-display uppercase leading-tight line-clamp-2", 
+            isLocked ? "text-gray-500" : `text-${accentColor}-200`
+          )}>
             {premiumReward}
           </p>
           {isLocked && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <motion.div 
+              className="absolute inset-0 bg-black/60 flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
               <Lock className="w-4 h-4 sm:w-6 sm:h-6 text-gray-500" />
-            </div>
+            </motion.div>
           )}
         </div>
 
@@ -459,10 +911,16 @@ function ScoreboardCard({
         </div>
       </div>
 
-      <div className={cn(
-        "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none",
-        `shadow-[inset_0_0_30px_rgba(var(--${accentColor}-glow),0.3)]`
-      )} />
-    </div>
+      {!isLocked && (
+        <motion.div
+          className={cn(
+            "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+          )}
+          style={{
+            boxShadow: `inset 0 0 30px rgba(${accentColor === "cyan" ? "34,211,238" : "251,191,36"},0.3)`
+          }}
+        />
+      )}
+    </motion.div>
   );
 }
