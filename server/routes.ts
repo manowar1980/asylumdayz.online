@@ -193,6 +193,46 @@ export async function registerRoutes(
     }
   });
 
+  // Weekly Challenges
+  app.get("/api/challenges", async (req, res) => {
+    const challenges = await storage.getWeeklyChallenges();
+    res.json(challenges);
+  });
+
+  app.post("/api/challenges", requireAdmin, async (req, res) => {
+    try {
+      const { title, description, xpReward } = req.body;
+      const challenge = await storage.createWeeklyChallenge({
+        title,
+        description,
+        xpReward: xpReward || 100,
+        isActive: true
+      });
+      res.json(challenge);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.patch("/api/challenges/:id", requireAdmin, async (req, res) => {
+    try {
+      const updated = await storage.updateWeeklyChallenge(Number(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.delete("/api/challenges/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteWeeklyChallenge(Number(req.params.id));
+      res.json({ success: true });
+    } catch (e) {
+      res.status(400).json({ message: "Failed to delete" });
+    }
+  });
+
   // Asylum AI Chat with image support
   const upload = multer({ 
     storage: multer.memoryStorage(),

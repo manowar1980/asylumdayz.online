@@ -2,14 +2,16 @@ import { Navigation } from "@/components/Navigation";
 import { useBattlepassConfig, useBattlepassLevels } from "@/hooks/use-battlepass";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal } from "lucide-react";
+import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal, Target, Star, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
+import type { WeeklyChallenge } from "@shared/schema";
 
 export default function Battlepass() {
   const { data: config } = useBattlepassConfig();
@@ -23,6 +25,11 @@ export default function Battlepass() {
   const [showSecretDialog, setShowSecretDialog] = useState(false);
   const [secretCode, setSecretCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showChallenges, setShowChallenges] = useState(false);
+  
+  const { data: challenges } = useQuery<WeeklyChallenge[]>({
+    queryKey: ["/api/challenges"],
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -208,7 +215,7 @@ export default function Battlepass() {
         </div>
 
         <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-2 sm:gap-4 text-xs font-mono border-t border-amber-900/30 pt-6">
-          {["CLAIM", "RANK UP", "TUTORIAL", "S.C.O.R.E", "CHALLENGES"].map((item) => (
+          {["CLAIM", "RANK UP", "TUTORIAL", "S.C.O.R.E"].map((item) => (
             <div
               key={item}
               className="px-3 sm:px-4 py-2 bg-black/50 border border-amber-900/50 text-amber-500 hover:bg-amber-900/20 cursor-pointer transition-colors"
@@ -216,7 +223,58 @@ export default function Battlepass() {
               {item}
             </div>
           ))}
+          <div
+            onClick={() => setShowChallenges(true)}
+            className="px-3 sm:px-4 py-2 bg-black/50 border border-amber-900/50 text-amber-500 hover:bg-amber-900/20 cursor-pointer transition-colors"
+            data-testid="button-show-challenges"
+          >
+            CHALLENGES
+          </div>
         </div>
+
+        <Dialog open={showChallenges} onOpenChange={setShowChallenges}>
+          <DialogContent className="bg-zinc-900 border-amber-900/50 max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="font-tactical text-amber-400 text-xl flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                WEEKLY CHALLENGES
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
+                Complete challenges to earn XP and rank up your battlepass.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {challenges && challenges.length > 0 ? (
+                challenges.filter(c => c.isActive).map((challenge) => (
+                  <div
+                    key={challenge.id}
+                    className="p-4 bg-black/50 border border-amber-900/30 rounded"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <h3 className="text-amber-300 font-display text-sm uppercase">
+                          {challenge.title}
+                        </h3>
+                        <p className="text-gray-400 text-xs mt-1">
+                          {challenge.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 text-amber-500 bg-amber-900/20 px-2 py-1 rounded">
+                        <Star className="w-3 h-3" />
+                        <span className="text-xs font-mono">{challenge.xpReward} XP</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Target className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>No challenges available</p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

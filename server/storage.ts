@@ -4,10 +4,12 @@ import {
   battlepassConfig,
   battlepassLevels,
   supportRequests,
+  weeklyChallenges,
   type Server,
   type BattlepassConfig,
   type BattlepassLevel,
   type SupportRequest,
+  type WeeklyChallenge,
   users
 } from "@shared/schema";
 import { eq, asc, desc } from "drizzle-orm";
@@ -33,6 +35,12 @@ export interface IStorage {
   
   // User (Admin check)
   getUser(id: string): Promise<typeof users.$inferSelect | undefined>;
+  
+  // Weekly Challenges
+  getWeeklyChallenges(): Promise<WeeklyChallenge[]>;
+  createWeeklyChallenge(challenge: typeof weeklyChallenges.$inferInsert): Promise<WeeklyChallenge>;
+  updateWeeklyChallenge(id: number, challenge: Partial<typeof weeklyChallenges.$inferInsert>): Promise<WeeklyChallenge>;
+  deleteWeeklyChallenge(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -111,6 +119,29 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<typeof users.$inferSelect | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+
+  // Weekly Challenges
+  async getWeeklyChallenges(): Promise<WeeklyChallenge[]> {
+    return await db.select().from(weeklyChallenges).orderBy(asc(weeklyChallenges.id));
+  }
+
+  async createWeeklyChallenge(challenge: typeof weeklyChallenges.$inferInsert): Promise<WeeklyChallenge> {
+    const [newChallenge] = await db.insert(weeklyChallenges).values(challenge).returning();
+    return newChallenge;
+  }
+
+  async updateWeeklyChallenge(id: number, challenge: Partial<typeof weeklyChallenges.$inferInsert>): Promise<WeeklyChallenge> {
+    const [updated] = await db
+      .update(weeklyChallenges)
+      .set(challenge)
+      .where(eq(weeklyChallenges.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteWeeklyChallenge(id: number): Promise<void> {
+    await db.delete(weeklyChallenges).where(eq(weeklyChallenges.id, id));
   }
 }
 

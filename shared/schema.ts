@@ -48,7 +48,18 @@ export const supportRequests = pgTable("support_requests", {
 
 export const insertSupportRequestSchema = createInsertSchema(supportRequests);
 
+export const weeklyChallenges = pgTable("weekly_challenges", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  xpReward: integer("xp_reward").notNull().default(100),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const insertWeeklyChallengeSchema = createInsertSchema(weeklyChallenges);
+
 export type Server = typeof servers.$inferSelect;
 export type BattlepassConfig = typeof battlepassConfig.$inferSelect;
 export type BattlepassLevel = typeof battlepassLevels.$inferSelect;
 export type SupportRequest = typeof supportRequests.$inferSelect;
+export type WeeklyChallenge = typeof weeklyChallenges.$inferSelect;

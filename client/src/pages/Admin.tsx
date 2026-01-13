@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Edit, Mail, CheckCircle, Clock, AlertTriangle, ImagePlus, X } from "lucide-react";
+import { Loader2, Edit, Mail, CheckCircle, Clock, AlertTriangle, ImagePlus, X, Target, Plus, Trash2, Star } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertBattlepassConfigSchema, insertBattlepassLevelSchema } from "@shared/schema";
+import { insertBattlepassConfigSchema, insertBattlepassLevelSchema, type WeeklyChallenge } from "@shared/schema";
 import { z } from "zod";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -82,6 +82,12 @@ export default function Admin() {
                 </p>
               )}
             </div>
+          </section>
+
+          {/* Weekly Challenges Section */}
+          <section>
+            <h2 className="text-xl sm:text-2xl font-display text-white mb-4 sm:mb-6 border-l-4 border-amber-500 pl-4">WEEKLY CHALLENGES</h2>
+            <WeeklyChallengesManager />
           </section>
         </div>
       </div>
@@ -447,5 +453,232 @@ function LevelEditorRow({ level }: { level: any }) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function WeeklyChallengesManager() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [editingChallenge, setEditingChallenge] = useState<WeeklyChallenge | null>(null);
+  
+  const { data: challenges, isLoading } = useQuery<WeeklyChallenge[]>({
+    queryKey: ["/api/challenges"],
+  });
+
+  const createChallenge = useMutation({
+    mutationFn: async (data: { title: string; description: string; xpReward: number }) => {
+      const res = await apiRequest("POST", "/api/challenges", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      toast({ title: "Challenge created" });
+      setIsAddingNew(false);
+    },
+  });
+
+  const updateChallenge = useMutation({
+    mutationFn: async ({ id, ...data }: { id: number; title?: string; description?: string; xpReward?: number; isActive?: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/challenges/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      toast({ title: "Challenge updated" });
+      setEditingChallenge(null);
+    },
+  });
+
+  const deleteChallenge = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/challenges/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      toast({ title: "Challenge deleted" });
+    },
+  });
+
+  if (isLoading) return <Loader2 className="animate-spin text-white" />;
+
+  return (
+    <div className="space-y-4">
+      <Button
+        onClick={() => setIsAddingNew(true)}
+        className="bg-amber-600 hover:bg-amber-500"
+        data-testid="button-add-challenge"
+      >
+        <Plus className="w-4 h-4 mr-2" />
+        ADD NEW CHALLENGE
+      </Button>
+
+      {challenges && challenges.length > 0 ? (
+        <div className="grid gap-3">
+          {challenges.map((challenge) => (
+            <div
+              key={challenge.id}
+              className="flex items-center justify-between gap-4 p-4 bg-zinc-900 border border-amber-900/30 rounded"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-amber-500" />
+                  <h3 className="text-amber-300 font-display text-sm uppercase">{challenge.title}</h3>
+                  <Badge variant={challenge.isActive ? "default" : "secondary"} className="text-xs">
+                    {challenge.isActive ? "ACTIVE" : "INACTIVE"}
+                  </Badge>
+                </div>
+                <p className="text-gray-400 text-xs mt-1">{challenge.description}</p>
+                <div className="flex items-center gap-1 mt-2 text-amber-500 text-xs">
+                  <Star className="w-3 h-3" />
+                  <span>{challenge.xpReward} XP</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setEditingChallenge(challenge)}
+                  className="text-blue-400 hover:text-blue-300"
+                  data-testid={`button-edit-challenge-${challenge.id}`}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => deleteChallenge.mutate(challenge.id)}
+                  className="text-red-400 hover:text-red-300"
+                  data-testid={`button-delete-challenge-${challenge.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-gray-500 font-mono">
+          <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>No challenges created yet.</p>
+        </div>
+      )}
+
+      <ChallengeFormDialog
+        open={isAddingNew}
+        onOpenChange={setIsAddingNew}
+        onSubmit={(data) => createChallenge.mutate(data)}
+        isPending={createChallenge.isPending}
+      />
+
+      <ChallengeFormDialog
+        open={!!editingChallenge}
+        onOpenChange={(open) => !open && setEditingChallenge(null)}
+        challenge={editingChallenge}
+        onSubmit={(data) => editingChallenge && updateChallenge.mutate({ id: editingChallenge.id, ...data })}
+        isPending={updateChallenge.isPending}
+      />
+    </div>
+  );
+}
+
+function ChallengeFormDialog({
+  open,
+  onOpenChange,
+  challenge,
+  onSubmit,
+  isPending,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  challenge?: WeeklyChallenge | null;
+  onSubmit: (data: { title: string; description: string; xpReward: number; isActive?: boolean }) => void;
+  isPending: boolean;
+}) {
+  const [title, setTitle] = useState(challenge?.title || "");
+  const [description, setDescription] = useState(challenge?.description || "");
+  const [xpReward, setXpReward] = useState(challenge?.xpReward?.toString() || "100");
+  const [isActive, setIsActive] = useState(challenge?.isActive ?? true);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      title,
+      description,
+      xpReward: parseInt(xpReward) || 100,
+      isActive,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-zinc-900 border-amber-900/50">
+        <DialogHeader>
+          <DialogTitle className="font-tactical text-amber-400">
+            {challenge ? "EDIT CHALLENGE" : "NEW CHALLENGE"}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-amber-400 text-sm">Title</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Kill 10 Zombies"
+              className="bg-black/50 border-amber-900/50"
+              required
+              data-testid="input-challenge-title"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-amber-400 text-sm">Description</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g., Eliminate 10 zombies in any location"
+              className="bg-black/50 border-amber-900/50"
+              required
+              data-testid="input-challenge-description"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-amber-400 text-sm">XP Reward</Label>
+            <Input
+              type="number"
+              value={xpReward}
+              onChange={(e) => setXpReward(e.target.value)}
+              placeholder="100"
+              className="bg-black/50 border-amber-900/50"
+              min="1"
+              data-testid="input-challenge-xp"
+            />
+          </div>
+          {challenge && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="rounded"
+                data-testid="input-challenge-active"
+              />
+              <Label htmlFor="isActive" className="text-amber-400 text-sm cursor-pointer">
+                Active (visible to players)
+              </Label>
+            </div>
+          )}
+          <Button
+            type="submit"
+            className="w-full bg-amber-600 hover:bg-amber-500"
+            disabled={isPending}
+            data-testid="button-save-challenge"
+          >
+            {isPending ? "SAVING..." : "SAVE CHALLENGE"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
