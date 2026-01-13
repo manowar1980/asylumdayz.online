@@ -35,9 +35,8 @@ export default function Home() {
             />
           </div>
 
-          <h1 className="text-4xl sm:text-6xl md:text-8xl font-tactical text-white mb-2 tracking-widest">
-            <span className="blood-drip">ASYLUM</span>{" "}
-            <span className="text-red-600 blood-drip-delayed">DAYZ</span>
+          <h1 className="text-4xl sm:text-6xl md:text-8xl font-tactical text-white mb-2 tracking-widest drop-shadow-[0_0_30px_rgba(139,5,5,0.8)]">
+            ASYLUM <span className="text-red-600">DAYZ</span>
           </h1>
           
           <p className="text-lg sm:text-xl md:text-2xl text-gray-400 font-display tracking-widest uppercase mb-8 sm:mb-12 max-w-2xl px-4">
