@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertBattlepassConfigSchema, insertBattlepassLevelSchema, type WeeklyChallenge } from "@shared/schema";
 import { z } from "zod";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -596,10 +596,19 @@ function ChallengeFormDialog({
   onSubmit: (data: { title: string; description: string; xpReward: number; isActive?: boolean }) => void;
   isPending: boolean;
 }) {
-  const [title, setTitle] = useState(challenge?.title || "");
-  const [description, setDescription] = useState(challenge?.description || "");
-  const [xpReward, setXpReward] = useState(challenge?.xpReward?.toString() || "100");
-  const [isActive, setIsActive] = useState(challenge?.isActive ?? true);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [xpReward, setXpReward] = useState("100");
+  const [isActive, setIsActive] = useState(true);
+
+  useEffect(() => {
+    if (open) {
+      setTitle(challenge?.title || "");
+      setDescription(challenge?.description || "");
+      setXpReward(challenge?.xpReward?.toString() || "100");
+      setIsActive(challenge?.isActive ?? true);
+    }
+  }, [open, challenge]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
