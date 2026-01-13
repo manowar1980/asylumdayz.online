@@ -5,14 +5,16 @@ import {
   battlepassLevels,
   supportRequests,
   weeklyChallenges,
+  userChallengeProgress,
   type Server,
   type BattlepassConfig,
   type BattlepassLevel,
   type SupportRequest,
   type WeeklyChallenge,
+  type UserChallengeProgress,
   users
 } from "@shared/schema";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   // Servers
@@ -41,6 +43,13 @@ export interface IStorage {
   createWeeklyChallenge(challenge: typeof weeklyChallenges.$inferInsert): Promise<WeeklyChallenge>;
   updateWeeklyChallenge(id: number, challenge: Partial<typeof weeklyChallenges.$inferInsert>): Promise<WeeklyChallenge>;
   deleteWeeklyChallenge(id: number): Promise<void>;
+  
+  // User Challenge Progress
+  getUserChallengeProgress(discordId: string, weekStart: string): Promise<UserChallengeProgress[]>;
+  getOrCreateUserChallengeProgress(discordId: string, challengeId: number, weekStart: string): Promise<UserChallengeProgress>;
+  updateUserChallengeProgress(id: number, data: Partial<typeof userChallengeProgress.$inferInsert>): Promise<UserChallengeProgress>;
+  claimChallengeReward(discordId: string, challengeId: number, weekStart: string): Promise<UserChallengeProgress>;
+  getAllUserProgress(weekStart: string): Promise<UserChallengeProgress[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -142,6 +151,60 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWeeklyChallenge(id: number): Promise<void> {
     await db.delete(weeklyChallenges).where(eq(weeklyChallenges.id, id));
+  }
+
+  // User Challenge Progress
+  async getUserChallengeProgress(discordId: string, weekStart: string): Promise<UserChallengeProgress[]> {
+    return await db.select().from(userChallengeProgress)
+      .where(and(
+        eq(userChallengeProgress.discordId, discordId),
+        eq(userChallengeProgress.weekStart, weekStart)
+      ));
+  }
+
+  async getOrCreateUserChallengeProgress(discordId: string, challengeId: number, weekStart: string): Promise<UserChallengeProgress> {
+    const [existing] = await db.select().from(userChallengeProgress)
+      .where(and(
+        eq(userChallengeProgress.discordId, discordId),
+        eq(userChallengeProgress.challengeId, challengeId),
+        eq(userChallengeProgress.weekStart, weekStart)
+      ));
+    
+    if (existing) return existing;
+    
+    const now = new Date().toISOString();
+    const [created] = await db.insert(userChallengeProgress).values({
+      discordId,
+      challengeId,
+      progress: 0,
+      claimed: false,
+      weekStart,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    return created;
+  }
+
+  async updateUserChallengeProgress(id: number, data: Partial<typeof userChallengeProgress.$inferInsert>): Promise<UserChallengeProgress> {
+    const [updated] = await db.update(userChallengeProgress)
+      .set({ ...data, updatedAt: new Date().toISOString() })
+      .where(eq(userChallengeProgress.id, id))
+      .returning();
+    return updated;
+  }
+
+  async claimChallengeReward(discordId: string, challengeId: number, weekStart: string): Promise<UserChallengeProgress> {
+    const progress = await this.getOrCreateUserChallengeProgress(discordId, challengeId, weekStart);
+    const [updated] = await db.update(userChallengeProgress)
+      .set({ claimed: true, updatedAt: new Date().toISOString() })
+      .where(eq(userChallengeProgress.id, progress.id))
+      .returning();
+    return updated;
+  }
+
+  async getAllUserProgress(weekStart: string): Promise<UserChallengeProgress[]> {
+    return await db.select().from(userChallengeProgress)
+      .where(eq(userChallengeProgress.weekStart, weekStart));
   }
 }
 

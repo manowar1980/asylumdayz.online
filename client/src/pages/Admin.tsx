@@ -471,7 +471,7 @@ function WeeklyChallengesManager() {
   });
 
   const createChallenge = useMutation({
-    mutationFn: async (data: { title: string; description: string; xpReward: number }) => {
+    mutationFn: async (data: { title: string; description: string; xpReward: number; targetCount: number }) => {
       const res = await apiRequest("POST", "/api/challenges", data);
       return res.json();
     },
@@ -483,7 +483,7 @@ function WeeklyChallengesManager() {
   });
 
   const updateChallenge = useMutation({
-    mutationFn: async ({ id, ...data }: { id: number; title?: string; description?: string; xpReward?: number; isActive?: boolean }) => {
+    mutationFn: async ({ id, ...data }: { id: number; title?: string; description?: string; xpReward?: number; isActive?: boolean; targetCount?: number }) => {
       const res = await apiRequest("PATCH", `/api/challenges/${id}`, data);
       return res.json();
     },
@@ -534,9 +534,15 @@ function WeeklyChallengesManager() {
                   </Badge>
                 </div>
                 <p className="text-gray-400 text-xs mt-1">{challenge.description}</p>
-                <div className="flex items-center gap-1 mt-2 text-amber-500 text-xs">
-                  <Star className="w-3 h-3" />
-                  <span>{challenge.xpReward} XP</span>
+                <div className="flex items-center gap-3 mt-2 text-xs">
+                  <div className="flex items-center gap-1 text-amber-500">
+                    <Star className="w-3 h-3" />
+                    <span>{challenge.xpReward} XP</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-cyan-500">
+                    <Target className="w-3 h-3" />
+                    <span>Target: {challenge.targetCount || 1}</span>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -597,12 +603,13 @@ function ChallengeFormDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   challenge?: WeeklyChallenge | null;
-  onSubmit: (data: { title: string; description: string; xpReward: number; isActive?: boolean }) => void;
+  onSubmit: (data: { title: string; description: string; xpReward: number; targetCount: number; isActive?: boolean }) => void;
   isPending: boolean;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [xpReward, setXpReward] = useState("100");
+  const [targetCount, setTargetCount] = useState("1");
   const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
@@ -610,6 +617,7 @@ function ChallengeFormDialog({
       setTitle(challenge?.title || "");
       setDescription(challenge?.description || "");
       setXpReward(challenge?.xpReward?.toString() || "100");
+      setTargetCount(challenge?.targetCount?.toString() || "1");
       setIsActive(challenge?.isActive ?? true);
     }
   }, [open, challenge]);
@@ -620,6 +628,7 @@ function ChallengeFormDialog({
       title,
       description,
       xpReward: parseInt(xpReward) || 100,
+      targetCount: parseInt(targetCount) || 1,
       isActive,
     });
   };
@@ -655,17 +664,32 @@ function ChallengeFormDialog({
               data-testid="input-challenge-description"
             />
           </div>
-          <div className="space-y-2">
-            <Label className="text-amber-400 text-sm">XP Reward</Label>
-            <Input
-              type="number"
-              value={xpReward}
-              onChange={(e) => setXpReward(e.target.value)}
-              placeholder="100"
-              className="bg-black/50 border-amber-900/50"
-              min="1"
-              data-testid="input-challenge-xp"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-amber-400 text-sm">XP Reward</Label>
+              <Input
+                type="number"
+                value={xpReward}
+                onChange={(e) => setXpReward(e.target.value)}
+                placeholder="100"
+                className="bg-black/50 border-amber-900/50"
+                min="1"
+                data-testid="input-challenge-xp"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-amber-400 text-sm">Target Count</Label>
+              <Input
+                type="number"
+                value={targetCount}
+                onChange={(e) => setTargetCount(e.target.value)}
+                placeholder="1"
+                className="bg-black/50 border-amber-900/50"
+                min="1"
+                data-testid="input-challenge-target"
+              />
+              <p className="text-xs text-gray-500">How many to complete (e.g., 3 invites)</p>
+            </div>
           </div>
           {challenge && (
             <div className="flex items-center gap-2">

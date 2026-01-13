@@ -201,11 +201,12 @@ export async function registerRoutes(
 
   app.post("/api/challenges", requireAdmin, async (req, res) => {
     try {
-      const { title, description, xpReward } = req.body;
+      const { title, description, xpReward, targetCount } = req.body;
       const challenge = await storage.createWeeklyChallenge({
         title,
         description,
         xpReward: xpReward || 100,
+        targetCount: targetCount || 1,
         isActive: true
       });
       res.json(challenge);
@@ -230,6 +231,108 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (e) {
       res.status(400).json({ message: "Failed to delete" });
+    }
+  });
+
+  // Helper function to get current week start (Monday)
+  function getCurrentWeekStart(): string {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+    const monday = new Date(now.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+    return monday.toISOString().split("T")[0];
+  }
+
+  // Get user's challenge progress
+  app.get("/api/challenges/progress", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const userProfile = req.user as any;
+    const discordId = userProfile.discordId || userProfile.id;
+    const weekStart = getCurrentWeekStart();
+    
+    try {
+      const progress = await storage.getUserChallengeProgress(discordId, weekStart);
+      res.json(progress);
+    } catch (e) {
+      res.status(500).json({ message: "Failed to get progress" });
+    }
+  });
+
+  // Claim challenge reward
+  app.post("/api/challenges/:id/claim", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const userProfile = req.user as any;
+    const discordId = userProfile.discordId || userProfile.id;
+    const challengeId = Number(req.params.id);
+    const weekStart = getCurrentWeekStart();
+    
+    try {
+      // Check if challenge exists and get target
+      const challenges = await storage.getWeeklyChallenges();
+      const challenge = challenges.find(c => c.id === challengeId);
+      if (!challenge) {
+        return res.status(404).json({ message: "Challenge not found" });
+      }
+      
+      // Get current progress
+      const progress = await storage.getOrCreateUserChallengeProgress(discordId, challengeId, weekStart);
+      
+      // Check if already claimed
+      if (progress.claimed) {
+        return res.status(400).json({ message: "Already claimed" });
+      }
+      
+      // Check if target met
+      if (progress.progress < (challenge.targetCount || 1)) {
+        return res.status(400).json({ message: "Target not met" });
+      }
+      
+      // Claim the reward
+      const claimed = await storage.claimChallengeReward(discordId, challengeId, weekStart);
+      res.json(claimed);
+    } catch (e) {
+      res.status(500).json({ message: "Failed to claim reward" });
+    }
+  });
+
+  // Admin: Update user challenge progress
+  app.patch("/api/challenges/progress/:progressId", requireAdmin, async (req, res) => {
+    try {
+      const updated = await storage.updateUserChallengeProgress(Number(req.params.progressId), req.body);
+      res.json(updated);
+    } catch (e) {
+      res.status(400).json({ message: "Failed to update progress" });
+    }
+  });
+
+  // Admin: Set user progress for a specific challenge
+  app.post("/api/challenges/:id/progress", requireAdmin, async (req, res) => {
+    const { discordId, progress } = req.body;
+    const challengeId = Number(req.params.id);
+    const weekStart = getCurrentWeekStart();
+    
+    try {
+      const existing = await storage.getOrCreateUserChallengeProgress(discordId, challengeId, weekStart);
+      const updated = await storage.updateUserChallengeProgress(existing.id, { progress });
+      res.json(updated);
+    } catch (e) {
+      res.status(400).json({ message: "Failed to set progress" });
+    }
+  });
+
+  // Admin: Get all user progress for current week
+  app.get("/api/challenges/all-progress", requireAdmin, async (req, res) => {
+    const weekStart = getCurrentWeekStart();
+    try {
+      const progress = await storage.getAllUserProgress(weekStart);
+      res.json(progress);
+    } catch (e) {
+      res.status(500).json({ message: "Failed to get progress" });
     }
   });
 

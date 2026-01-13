@@ -54,12 +54,27 @@ export const weeklyChallenges = pgTable("weekly_challenges", {
   description: text("description").notNull(),
   xpReward: integer("xp_reward").notNull().default(100),
   isActive: boolean("is_active").notNull().default(true),
+  targetCount: integer("target_count").notNull().default(1),
+  challengeType: text("challenge_type").notNull().default("manual"),
+});
+
+export const userChallengeProgress = pgTable("user_challenge_progress", {
+  id: serial("id").primaryKey(),
+  discordId: text("discord_id").notNull(),
+  challengeId: integer("challenge_id").notNull(),
+  progress: integer("progress").notNull().default(0),
+  claimed: boolean("claimed").notNull().default(false),
+  weekStart: text("week_start").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
 });
 
 export const insertWeeklyChallengeSchema = createInsertSchema(weeklyChallenges);
+export const insertUserChallengeProgressSchema = createInsertSchema(userChallengeProgress);
 
 export type Server = typeof servers.$inferSelect;
 export type BattlepassConfig = typeof battlepassConfig.$inferSelect;
 export type BattlepassLevel = typeof battlepassLevels.$inferSelect;
 export type SupportRequest = typeof supportRequests.$inferSelect;
 export type WeeklyChallenge = typeof weeklyChallenges.$inferSelect;
+export type UserChallengeProgress = typeof userChallengeProgress.$inferSelect;

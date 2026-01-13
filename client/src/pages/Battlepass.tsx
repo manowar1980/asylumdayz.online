@@ -2,16 +2,18 @@ import { Navigation } from "@/components/Navigation";
 import { useBattlepassConfig, useBattlepassLevels } from "@/hooks/use-battlepass";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal, Target, Star, X } from "lucide-react";
+import { Lock, Gift, Crown, Clock, ChevronLeft, ChevronRight, Terminal, Target, Star, X, CheckCircle, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useQuery } from "@tanstack/react-query";
-import type { WeeklyChallenge } from "@shared/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import type { WeeklyChallenge, UserChallengeProgress } from "@shared/schema";
+import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Battlepass() {
   const { data: config } = useBattlepassConfig();
@@ -27,6 +29,8 @@ export default function Battlepass() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
   
+  const { user } = useAuth();
+  
   const { data: challenges } = useQuery<WeeklyChallenge[]>({
     queryKey: ["challenges"],
     queryFn: async () => {
@@ -34,6 +38,34 @@ export default function Battlepass() {
       return res.json();
     },
   });
+
+  const { data: userProgress, refetch: refetchProgress } = useQuery<UserChallengeProgress[]>({
+    queryKey: ["challengeProgress"],
+    queryFn: async () => {
+      const res = await fetch("/api/challenges/progress", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  const claimMutation = useMutation({
+    mutationFn: async (challengeId: number) => {
+      const res = await apiRequest("POST", `/api/challenges/${challengeId}/claim`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Reward Claimed!", description: "XP has been added to your account." });
+      refetchProgress();
+    },
+    onError: (error: any) => {
+      toast({ title: "Cannot Claim", description: error.message || "Requirements not met", variant: "destructive" });
+    },
+  });
+
+  const getProgressForChallenge = (challengeId: number): UserChallengeProgress | undefined => {
+    return userProgress?.find(p => p.challengeId === challengeId);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -249,27 +281,92 @@ export default function Battlepass() {
             </DialogHeader>
             <div className="space-y-3 max-h-[60vh] overflow-y-auto">
               {challenges && challenges.length > 0 ? (
-                challenges.filter(c => c.isActive).map((challenge) => (
-                  <div
-                    key={challenge.id}
-                    className="p-4 bg-black/50 border border-amber-900/30 rounded"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <h3 className="text-amber-300 font-display text-sm uppercase">
-                          {challenge.title}
-                        </h3>
-                        <p className="text-gray-400 text-xs mt-1">
-                          {challenge.description}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 text-amber-500 bg-amber-900/20 px-2 py-1 rounded">
-                        <Star className="w-3 h-3" />
-                        <span className="text-xs font-mono">{challenge.xpReward} XP</span>
+                challenges.filter(c => c.isActive).map((challenge) => {
+                  const progress = getProgressForChallenge(challenge.id);
+                  const currentProgress = progress?.progress || 0;
+                  const targetCount = challenge.targetCount || 1;
+                  const isClaimed = progress?.claimed || false;
+                  const canClaim = currentProgress >= targetCount && !isClaimed;
+                  const progressPercent = Math.min((currentProgress / targetCount) * 100, 100);
+
+                  return (
+                    <div
+                      key={challenge.id}
+                      data-testid={`challenge-card-${challenge.id}`}
+                      className={cn(
+                        "p-4 bg-black/50 border rounded transition-all",
+                        isClaimed 
+                          ? "border-green-600/50 bg-green-900/10" 
+                          : canClaim
+                          ? "border-amber-500/50 bg-amber-900/20"
+                          : "border-amber-900/30"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-amber-300 font-display text-sm uppercase">
+                              {challenge.title}
+                            </h3>
+                            {isClaimed && (
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                            )}
+                          </div>
+                          <p className="text-gray-400 text-xs mt-1">
+                            {challenge.description}
+                          </p>
+                          
+                          {user && (
+                            <div className="mt-3">
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-gray-500">Progress</span>
+                                <span className={cn(
+                                  "font-mono",
+                                  isClaimed ? "text-green-400" : currentProgress >= targetCount ? "text-amber-400" : "text-gray-400"
+                                )}>
+                                  {currentProgress}/{targetCount}
+                                </span>
+                              </div>
+                              <Progress 
+                                value={progressPercent} 
+                                className={cn(
+                                  "h-2",
+                                  isClaimed ? "[&>div]:bg-green-500" : "[&>div]:bg-amber-500"
+                                )}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="flex items-center gap-1 text-amber-500 bg-amber-900/20 px-2 py-1 rounded">
+                            <Star className="w-3 h-3" />
+                            <span className="text-xs font-mono">{challenge.xpReward} XP</span>
+                          </div>
+                          
+                          {user && (
+                            isClaimed ? (
+                              <span className="text-xs text-green-400 font-mono">CLAIMED</span>
+                            ) : canClaim ? (
+                              <Button
+                                size="sm"
+                                data-testid={`claim-button-${challenge.id}`}
+                                className="bg-amber-600 hover:bg-amber-500 text-black text-xs h-7"
+                                onClick={() => claimMutation.mutate(challenge.id)}
+                                disabled={claimMutation.isPending}
+                              >
+                                {claimMutation.isPending ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  "CLAIM"
+                                )}
+                              </Button>
+                            ) : null
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Target className="w-12 h-12 mx-auto mb-3 opacity-30" />
