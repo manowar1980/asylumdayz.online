@@ -104,6 +104,15 @@ app.use((req, res, next) => {
     process.exit(1);
   }
 })();
+
+// Global error handlers
+process.on("uncaughtException", (error) => {
+  console.error("UNCAUGHT EXCEPTION:", error);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("UNHANDLED REJECTION:", reason, promise);
+});
     },
   );
 })();

@@ -69,6 +69,15 @@ export function initializeDatabase() {
       "is_admin" integer DEFAULT false NOT NULL,
       "created_at" text DEFAULT CURRENT_TIMESTAMP NOT NULL,
       "updated_at" text DEFAULT CURRENT_TIMESTAMP NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS "weekly_challenges" (
+      "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      "title" text NOT NULL,
+      "description" text NOT NULL,
+      "xp_reward" integer DEFAULT 100 NOT NULL,
+      "is_active" integer DEFAULT 1 NOT NULL,
+      "target_count" integer DEFAULT 1 NOT NULL,
+      "challenge_type" text DEFAULT 'manual' NOT NULL
     )`
   ];
   
@@ -83,4 +92,5 @@ export function initializeDatabase() {
   sqlite.close();
   console.log("Database initialized successfully");
 }
+
 
