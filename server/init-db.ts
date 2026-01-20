@@ -14,20 +14,73 @@ export function initializeDatabase() {
   
   const sqlite = new Database(dbPath);
   
-  // Read and execute the migration
-  const migrationPath = path.join(process.cwd(), "migrations", "0000_white_guardian.sql");
-  const migration = fs.readFileSync(migrationPath, "utf-8");
-  
-  // Split by statement-breakpoint and execute each statement
-  const statements = migration
-    .split("--> statement-breakpoint")
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
+  // Create all tables
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS "battlepass_config" (
+      "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      "season_name" text DEFAULT 'Genesis' NOT NULL,
+      "days_left" integer DEFAULT 25 NOT NULL,
+      "theme_color" text DEFAULT 'tech-blue' NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS "battlepass_levels" (
+      "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      "level" integer NOT NULL,
+      "free_reward" text NOT NULL,
+      "premium_reward" text NOT NULL,
+      "image_url" text,
+      "free_image_url" text,
+      "premium_image_url" text
+    )`,
+    `CREATE TABLE IF NOT EXISTS "servers" (
+      "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      "name" text NOT NULL,
+      "map" text NOT NULL,
+      "description" text NOT NULL,
+      "multiplier" text NOT NULL,
+      "features" text,
+      "connection_info" text
+    )`,
+    `CREATE TABLE IF NOT EXISTS "support_requests" (
+      "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      "name" text,
+      "email" text,
+      "discord_username" text,
+      "category" text NOT NULL,
+      "subject" text NOT NULL,
+      "message" text NOT NULL,
+      "status" text DEFAULT 'pending' NOT NULL,
+      "created_at" text NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS "user_challenge_progress" (
+      "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      "discord_id" text NOT NULL,
+      "challenge_id" integer NOT NULL,
+      "progress" integer DEFAULT 0 NOT NULL,
+      "claimed" integer DEFAULT false NOT NULL,
+      "week_start" text NOT NULL,
+      "created_at" text NOT NULL,
+      "updated_at" text NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS "users" (
+      "id" text PRIMARY KEY NOT NULL,
+      "username" text NOT NULL,
+      "email" text,
+      "avatar" text,
+      "is_admin" integer DEFAULT false NOT NULL,
+      "created_at" text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+      "updated_at" text DEFAULT CURRENT_TIMESTAMP NOT NULL
+    )`
+  ];
   
   for (const statement of statements) {
-    sqlite.exec(statement);
+    try {
+      sqlite.exec(statement);
+    } catch (error) {
+      console.error("Error executing statement:", error);
+    }
   }
   
   sqlite.close();
   console.log("Database initialized successfully");
 }
+
