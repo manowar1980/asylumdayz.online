@@ -3,10 +3,13 @@ import fs from "fs";
 import path from "path";
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  // In production, dist/public is built from client/src
+  // We need to serve from the correct location relative to the running app
+  const distPath = path.resolve(process.cwd(), "dist", "public");
+  
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+    console.warn(
+      `Warning: Could not find the build directory: ${distPath}. Serving may not work correctly.`,
     );
   }
 
@@ -17,3 +20,4 @@ export function serveStatic(app: Express) {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
+
