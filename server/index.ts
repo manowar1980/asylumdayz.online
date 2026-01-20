@@ -61,6 +61,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 (async () => {
   try {
     await registerRoutes(httpServer, app);
