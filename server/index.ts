@@ -18,6 +18,12 @@ app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Request logging middleware
+app.use((req, res, next) => {
+  log(`Incoming ${req.method} ${req.path}`, "request");
+  next();
+});
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
