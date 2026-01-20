@@ -4,6 +4,10 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import path from "path";
+import { initializeDatabase } from "./init-db";
+
+// Initialize database if it doesn't exist (important for Railway deployment)
+initializeDatabase();
 
 const app = express();
 const httpServer = createServer(app);
