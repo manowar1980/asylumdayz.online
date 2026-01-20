@@ -1,7 +1,7 @@
 import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler, Request, Response, NextFunction } from "express";
-import connectPg from "connect-pg-simple";
+import createMemoryStore from "memorystore";
 import { authStorage } from "./storage";
 import crypto from "crypto";
 // @ts-ignore
@@ -35,12 +35,9 @@ function revokeAuthToken(token: string): void {
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000;
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
+  const MemoryStore = createMemoryStore(session);
+  const sessionStore = new MemoryStore({
+    checkPeriod: sessionTtl,
   });
   return session({
     secret: process.env.SESSION_SECRET!,
@@ -50,8 +47,8 @@ export function getSession() {
     proxy: true,
     cookie: {
       httpOnly: true,
-      secure: true,
-      sameSite: "none" as const,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: sessionTtl,
     },
   });

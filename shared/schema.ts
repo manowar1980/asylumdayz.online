@@ -1,27 +1,27 @@
-import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 
 export * from "./models/auth";
 
-export const servers = pgTable("servers", {
-  id: serial("id").primaryKey(),
+export const servers = sqliteTable("servers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   map: text("map").notNull(),
   description: text("description").notNull(),
   multiplier: text("multiplier").notNull(),
-  features: text("features").array(),
+  features: text("features", { mode: "json" }).$type<string[]>(),
   connectionInfo: text("connection_info"),
 });
 
-export const battlepassConfig = pgTable("battlepass_config", {
-  id: serial("id").primaryKey(),
+export const battlepassConfig = sqliteTable("battlepass_config", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   seasonName: text("season_name").notNull().default("Genesis"),
   daysLeft: integer("days_left").notNull().default(25),
   themeColor: text("theme_color").notNull().default("tech-blue"),
 });
 
-export const battlepassLevels = pgTable("battlepass_levels", {
-  id: serial("id").primaryKey(),
+export const battlepassLevels = sqliteTable("battlepass_levels", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   level: integer("level").notNull(),
   freeReward: text("free_reward").notNull(),
   premiumReward: text("premium_reward").notNull(),
@@ -34,8 +34,8 @@ export const insertServerSchema = createInsertSchema(servers);
 export const insertBattlepassConfigSchema = createInsertSchema(battlepassConfig);
 export const insertBattlepassLevelSchema = createInsertSchema(battlepassLevels);
 
-export const supportRequests = pgTable("support_requests", {
-  id: serial("id").primaryKey(),
+export const supportRequests = sqliteTable("support_requests", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name"),
   email: text("email"),
   discordUsername: text("discord_username"),
@@ -48,22 +48,22 @@ export const supportRequests = pgTable("support_requests", {
 
 export const insertSupportRequestSchema = createInsertSchema(supportRequests);
 
-export const weeklyChallenges = pgTable("weekly_challenges", {
-  id: serial("id").primaryKey(),
+export const weeklyChallenges = sqliteTable("weekly_challenges", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),
   description: text("description").notNull(),
   xpReward: integer("xp_reward").notNull().default(100),
-  isActive: boolean("is_active").notNull().default(true),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   targetCount: integer("target_count").notNull().default(1),
   challengeType: text("challenge_type").notNull().default("manual"),
 });
 
-export const userChallengeProgress = pgTable("user_challenge_progress", {
-  id: serial("id").primaryKey(),
+export const userChallengeProgress = sqliteTable("user_challenge_progress", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   discordId: text("discord_id").notNull(),
   challengeId: integer("challenge_id").notNull(),
   progress: integer("progress").notNull().default(0),
-  claimed: boolean("claimed").notNull().default(false),
+  claimed: integer("claimed", { mode: "boolean" }).notNull().default(false),
   weekStart: text("week_start").notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

@@ -16,6 +16,12 @@ import {
 } from "@shared/schema";
 import { eq, asc, desc, and } from "drizzle-orm";
 
+// Helper to get last inserted row id (SQLite-specific)
+async function getLastInsertedId(table: any, idField: any) {
+  const result = await db.select().from(table).orderBy(desc(idField)).limit(1);
+  return result[0];
+}
+
 export interface IStorage {
   // Servers
   getServers(): Promise<Server[]>;
@@ -59,27 +65,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createServer(server: typeof servers.$inferInsert): Promise<Server> {
-    const [newServer] = await db.insert(servers).values(server).returning();
-    return newServer;
+    await db.insert(servers).values(server);
+    return await getLastInsertedId(servers, servers.id);
   }
 
   // Battlepass
   async getBattlepassConfig(): Promise<BattlepassConfig> {
     const [config] = await db.select().from(battlepassConfig).limit(1);
     if (!config) {
-      const [newConfig] = await db.insert(battlepassConfig).values({}).returning();
-      return newConfig;
+      await db.insert(battlepassConfig).values({});
+      return await getLastInsertedId(battlepassConfig, battlepassConfig.id);
     }
     return config;
   }
 
   async updateBattlepassConfig(config: Partial<typeof battlepassConfig.$inferInsert>): Promise<BattlepassConfig> {
     const existing = await this.getBattlepassConfig();
-    const [updated] = await db
+    await db
       .update(battlepassConfig)
       .set(config)
-      .where(eq(battlepassConfig.id, existing.id))
-      .returning();
+      .where(eq(battlepassConfig.id, existing.id));
+    const [updated] = await db.select().from(battlepassConfig).where(eq(battlepassConfig.id, existing.id));
     return updated;
   }
 
@@ -93,16 +99,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBattlepassLevel(level: typeof battlepassLevels.$inferInsert): Promise<BattlepassLevel> {
-    const [newLevel] = await db.insert(battlepassLevels).values(level).returning();
-    return newLevel;
+    await db.insert(battlepassLevels).values(level);
+    return await getLastInsertedId(battlepassLevels, battlepassLevels.id);
   }
 
   async updateBattlepassLevel(id: number, level: Partial<typeof battlepassLevels.$inferInsert>): Promise<BattlepassLevel> {
-    const [updated] = await db
+    await db
       .update(battlepassLevels)
       .set(level)
-      .where(eq(battlepassLevels.id, id))
-      .returning();
+      .where(eq(battlepassLevels.id, id));
+    const [updated] = await db.select().from(battlepassLevels).where(eq(battlepassLevels.id, id));
     return updated;
   }
 
@@ -112,16 +118,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSupportRequest(request: typeof supportRequests.$inferInsert): Promise<SupportRequest> {
-    const [newRequest] = await db.insert(supportRequests).values(request).returning();
-    return newRequest;
+    await db.insert(supportRequests).values(request);
+    return await getLastInsertedId(supportRequests, supportRequests.id);
   }
 
   async updateSupportRequestStatus(id: number, status: string): Promise<SupportRequest> {
-    const [updated] = await db
+    await db
       .update(supportRequests)
       .set({ status })
-      .where(eq(supportRequests.id, id))
-      .returning();
+      .where(eq(supportRequests.id, id));
+    const [updated] = await db.select().from(supportRequests).where(eq(supportRequests.id, id));
     return updated;
   }
 
@@ -136,16 +142,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWeeklyChallenge(challenge: typeof weeklyChallenges.$inferInsert): Promise<WeeklyChallenge> {
-    const [newChallenge] = await db.insert(weeklyChallenges).values(challenge).returning();
-    return newChallenge;
+    await db.insert(weeklyChallenges).values(challenge);
+    return await getLastInsertedId(weeklyChallenges, weeklyChallenges.id);
   }
 
   async updateWeeklyChallenge(id: number, challenge: Partial<typeof weeklyChallenges.$inferInsert>): Promise<WeeklyChallenge> {
-    const [updated] = await db
+    await db
       .update(weeklyChallenges)
       .set(challenge)
-      .where(eq(weeklyChallenges.id, id))
-      .returning();
+      .where(eq(weeklyChallenges.id, id));
+    const [updated] = await db.select().from(weeklyChallenges).where(eq(weeklyChallenges.id, id));
     return updated;
   }
 
@@ -173,7 +179,7 @@ export class DatabaseStorage implements IStorage {
     if (existing) return existing;
     
     const now = new Date().toISOString();
-    const [created] = await db.insert(userChallengeProgress).values({
+    await db.insert(userChallengeProgress).values({
       discordId,
       challengeId,
       progress: 0,
@@ -181,24 +187,24 @@ export class DatabaseStorage implements IStorage {
       weekStart,
       createdAt: now,
       updatedAt: now
-    }).returning();
-    return created;
+    });
+    return await getLastInsertedId(userChallengeProgress, userChallengeProgress.id);
   }
 
   async updateUserChallengeProgress(id: number, data: Partial<typeof userChallengeProgress.$inferInsert>): Promise<UserChallengeProgress> {
-    const [updated] = await db.update(userChallengeProgress)
+    await db.update(userChallengeProgress)
       .set({ ...data, updatedAt: new Date().toISOString() })
-      .where(eq(userChallengeProgress.id, id))
-      .returning();
+      .where(eq(userChallengeProgress.id, id));
+    const [updated] = await db.select().from(userChallengeProgress).where(eq(userChallengeProgress.id, id));
     return updated;
   }
 
   async claimChallengeReward(discordId: string, challengeId: number, weekStart: string): Promise<UserChallengeProgress> {
     const progress = await this.getOrCreateUserChallengeProgress(discordId, challengeId, weekStart);
-    const [updated] = await db.update(userChallengeProgress)
+    await db.update(userChallengeProgress)
       .set({ claimed: true, updatedAt: new Date().toISOString() })
-      .where(eq(userChallengeProgress.id, progress.id))
-      .returning();
+      .where(eq(userChallengeProgress.id, progress.id));
+    const [updated] = await db.select().from(userChallengeProgress).where(eq(userChallengeProgress.id, progress.id));
     return updated;
   }
 
